@@ -1,0 +1,1 @@
+1 - José-Lorenzo Cruz, Antonio González, Mateo Valero, and Nigel P. Topham. 2000. Multiple-banked register file architectures. In Proceedings of the 27th annual international symposium on Computer architecture (ISCA '00). ACM, New York, NY, USA, 316-325. DOI=http://dx.doi.org/10.1145/339647.339708
