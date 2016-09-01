@@ -1,1 +1,3 @@
 1 - José-Lorenzo Cruz, Antonio González, Mateo Valero, and Nigel P. Topham. 2000. Multiple-banked register file architectures. In Proceedings of the 27th annual international symposium on Computer architecture (ISCA '00). ACM, New York, NY, USA, 316-325. DOI=http://dx.doi.org/10.1145/339647.339708
+
+2 - Neha Agarwal, David Nellans, Mark Stephenson, Mike O'Connor, and Stephen W. Keckler. 2015. Page Placement Strategies for GPUs within Heterogeneous Memory Systems. SIGARCH Comput. Archit. News 43, 1 (March 2015), 607-618. DOI: http://dx.doi.org/10.1145/2786763.2694381 
