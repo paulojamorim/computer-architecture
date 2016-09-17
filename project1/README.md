@@ -4,4 +4,4 @@
 
 * 2) Run: `make syscallcount.test`
 
-* 3) To test pintool: ./pin -t `YOUR_PIN_DIRECTORY/source/tools/ManualExamples/obj-intel64/syscallcount.so -- /bin/ls`
+* 3) To test pintool: `./pin -t YOUR_PIN_DIRECTORY/source/tools/ManualExamples/obj-intel64/syscallcount.so -- /bin/ls`
