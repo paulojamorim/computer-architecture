@@ -1,4 +1,4 @@
-# To compile code
+# To compile and test code
 
 * 1) Copy `syscallcount.cpp` to `YOUR_PIN_DIRECTORY/source/tools/ManualExamples/`
 
