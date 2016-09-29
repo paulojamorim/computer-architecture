@@ -7,3 +7,5 @@
 4 - Chen, Sui, and Lu Peng. "Efficient GPU hardware transactional memory through early conflict resolution." 2016 IEEE International Symposium on High Performance Computer Architecture (HPCA). IEEE, 2016.
 
 5 - Ravi Teja Mullapudi, Vinay Vasista, and Uday Bondhugula. 2015. PolyMage: Automatic Optimization for Image Processing Pipelines. In Proceedings of the Twentieth International Conference on Architectural Support for Programming Languages and Operating Systems (ASPLOS '15). ACM, New York, NY, USA, 429-443. DOI: http://dx.doi.org/10.1145/2694344.2694364
+
+6 - Vasileios Karakostas, Jayneel Gandhi, Furkan Ayar, Adrián Cristal, Mark D. Hill, Kathryn S. McKinley, Mario Nemirovsky, Michael M. Swift, and Osman Ünsal. 2015. Redundant memory mappings for fast access to large memories. In Proceedings of the 42nd Annual International Symposium on Computer Architecture (ISCA '15). ACM, New York, NY, USA, 66-78. DOI: http://dx.doi.org/10.1145/2749469.2749471
