@@ -1,7 +1,9 @@
 # BONUS 1
 
 -----------------------------------------------------------
+### Instructions
 
+* Requirements: `g++ 5.4`
 * To compile: `make` 
 * To run: `./ras`
 * Output is similar: "O RAS de seu processador possuí aproximadamente `16` posições"
