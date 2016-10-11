@@ -106,8 +106,8 @@ namespace IL1
 {
     // 1st level instruction cache: 32 kB, 32 B lines, 8-way associative
     const UINT32 cacheSize = 32*KILO;
-    const UINT32 lineSize = 64;
-    const UINT32 associativity = 8;
+    const UINT32 lineSize = 32;
+    const UINT32 associativity = 32;
     const CACHE_ALLOC::STORE_ALLOCATION allocation = CACHE_ALLOC::STORE_NO_ALLOCATE;
 
     const UINT32 max_sets = cacheSize / (lineSize * associativity);
