@@ -61,6 +61,8 @@ ofstream OutFile;
 
 static UINT64 itlb_miss = 0;
 static UINT64 dtlb_miss = 0;
+static UINT64 memory_access_inst = 0;
+static UINT64 memory_access_data = 0;
 
 typedef UINT32 CACHE_STATS; // type of cache hit/miss counters
 
@@ -119,8 +121,8 @@ namespace DL1
 {
     // 1st level data cache: 32 kB, 32 B lines, 8-way associative
     const UINT32 cacheSize = 32*KILO;
-    const UINT32 lineSize = 64;
-    const UINT32 associativity = 8;
+    const UINT32 lineSize = 32;
+    const UINT32 associativity = 32;
     const CACHE_ALLOC::STORE_ALLOCATION allocation = CACHE_ALLOC::STORE_NO_ALLOCATE;
 
     const UINT32 max_sets = cacheSize / (lineSize * associativity);
@@ -136,9 +138,9 @@ LOCALVAR DL1::CACHE dl1("L1 Data Cache", DL1::cacheSize, DL1::lineSize, DL1::ass
 namespace UL2
 {
     // 2nd level unified cache: 256 KB, 64 B lines, 8-way associative
-    const UINT32 cacheSize = 256*KILO;
+    const UINT32 cacheSize = 2*MEGA;
     const UINT32 lineSize = 64;
-    const UINT32 associativity = 8;
+    const UINT32 associativity = 1;
     const CACHE_ALLOC::STORE_ALLOCATION allocation = CACHE_ALLOC::STORE_ALLOCATE;
 
     const UINT32 max_sets = cacheSize / (lineSize * associativity);
@@ -152,9 +154,9 @@ LOCALVAR UL2::CACHE ul2("L2 Unified Cache", UL2::cacheSize, UL2::lineSize, UL2::
 namespace UL3
 {
     // 3rd level unified cache: 15 MB, 64 B lines, 20-way associative
-    const UINT32 cacheSize = 15*MEGA;
+    const UINT32 cacheSize = 16*MEGA;
     const UINT32 lineSize = 64;
-    const UINT32 associativity = 20;
+    const UINT32 associativity = 1;
     const CACHE_ALLOC::STORE_ALLOCATION allocation = CACHE_ALLOC::STORE_ALLOCATE;
 
     const UINT32 max_sets = cacheSize / (lineSize * associativity);
@@ -175,13 +177,32 @@ LOCALFUN VOID Fini(int code, VOID * v)
     std::cerr << ul3;
 }*/
 
-LOCALFUN VOID Ul2Access(ADDRINT addr, UINT32 size, CACHE_BASE::ACCESS_TYPE accessType)
+LOCALFUN VOID Ul2Access(ADDRINT addr, UINT32 size, CACHE_BASE::ACCESS_TYPE accessType, bool is_data)
 {
     // second level unified cache
     const BOOL ul2Hit = ul2.Access(addr, size, accessType);
 
     // third level unified cache
-    if ( ! ul2Hit) ul3.Access(addr, size, accessType);
+    if ( ! ul2Hit)
+    {
+        const BOOL ul3Hit = ul3.Access(addr, size, accessType);
+
+        //L3 Miss
+        if (! ul3Hit)
+        {
+            if (is_data == true)
+            {
+                //data miss (memory access)
+                memory_access_data += 1;
+
+            }
+            else
+            {
+                // inst miss (memory access)
+                memory_access_inst += 1;
+            }
+        }
+    }
 }
 
 LOCALFUN VOID InsRef(ADDRINT addr)
@@ -200,7 +221,7 @@ LOCALFUN VOID InsRef(ADDRINT addr)
     const BOOL il1Hit = il1.AccessSingleLine(addr, accessType);
 
     // second level unified Cache
-    if ( ! il1Hit) Ul2Access(addr, size, accessType);
+    if ( ! il1Hit) Ul2Access(addr, size, accessType, false);
 }
 
 LOCALFUN VOID MemRefMulti(ADDRINT addr, UINT32 size, CACHE_BASE::ACCESS_TYPE accessType)
@@ -216,7 +237,7 @@ LOCALFUN VOID MemRefMulti(ADDRINT addr, UINT32 size, CACHE_BASE::ACCESS_TYPE acc
     const BOOL dl1Hit = dl1.Access(addr, size, accessType);
 
     // second level unified Cache
-    if ( ! dl1Hit) Ul2Access(addr, size, accessType);
+    if ( ! dl1Hit) Ul2Access(addr, size, accessType, true);
 }
 
 LOCALFUN VOID MemRefSingle(ADDRINT addr, UINT32 size, CACHE_BASE::ACCESS_TYPE accessType)
@@ -232,7 +253,7 @@ LOCALFUN VOID MemRefSingle(ADDRINT addr, UINT32 size, CACHE_BASE::ACCESS_TYPE ac
     const BOOL dl1Hit = dl1.AccessSingleLine(addr, accessType);
 
     // second level unified Cache
-    if ( ! dl1Hit) Ul2Access(addr, size, accessType);
+    if ( ! dl1Hit) Ul2Access(addr, size, accessType, true);
 }
 
 LOCALFUN VOID Instruction(INS ins, VOID *v)
@@ -279,32 +300,19 @@ KNOB<string> KnobOutputFile(KNOB_MODE_WRITEONCE, "pintool", "o", "inscount.out",
 VOID Fini(INT32 code, VOID *v)
 {
 
-    //printf(" >> %lu ", c);
-    // Write to a file since cout and cerr maybe closed by the application
     OutFile.setf(ios::showbase);
-    OutFile << "Sys - number of inst. " << itlb_miss << endl;
     
-    /*  
-    OutFile << "Sys - largest inst. : " << largest_inst_sys << endl;
     
-    OutFile << "Sys - lowest inst. : " << lowest_inst_sys << endl;
-    OutFile << "Sys - mean inst. size : " << (sysi_sum_size / sysi_count) << endl;
+    OutFile << "Memory access - Inst " << memory_access_inst << endl;
+    OutFile << "Miss - Inst. TLB " << itlb_miss << endl;  
+    OutFile << "Page table access - Inst. " << itlb_miss*3 << endl;  
     
-    OutFile << "\n" << endl;
-    
-    OutFile << "Prog - number of inst. " << prgi_count << endl;
-    OutFile << "Prog - largest inst. : " << largest_inst_prog << endl;
-    OutFile << "Prog - lowest inst. : " << lowest_inst_prog << endl;
-    OutFile << "Prog - mean inst. size : " << (prgi_sum_size / prgi_count) << endl;
-    */
-    OutFile.close();
+    OutFile << "Memory access - Data " << memory_access_data << endl;
+    OutFile << "Miss - Data TLB " << dtlb_miss << endl;
+    OutFile << "Page table access - Data. " << dtlb_miss*3 << endl;
 
-    std::cerr << itlb;
-    std::cerr << dtlb;
-    std::cerr << il1;
-    std::cerr << dl1;
-    std::cerr << ul2;
-    std::cerr << ul3;
+    
+    OutFile.close();
 }
 
 
