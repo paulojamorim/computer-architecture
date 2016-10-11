@@ -37,6 +37,21 @@ END_LEGAL */
  *  instruction+data TLB+cache hieraries
  */
 
+
+/* -----------------------------------------------
+
+Cache parameters:
+
+Intel Xeon(R) CPU E5-2620
+
+L1: 32 KB (8-way associative)
+L2: 256 KB (8-way associative)
+L3: 15 MB (20-way associative)
+
+Line size each levels:	64 bytes
+
+--------------------------------------------------*/
+
 #include <iostream>
 #include <fstream>
 
@@ -46,17 +61,18 @@ ofstream OutFile;
 
 static UINT64 tlb_miss_instruction = 0;
 
-
 typedef UINT32 CACHE_STATS; // type of cache hit/miss counters
 
 #include "pin_cache.H"
 
+
+// -------  TLB -------------------------------------------------------------------------------
 namespace ITLB
 {
-    // instruction TLB: 4 kB pages, 32 entries, fully associative
+    // instruction TLB: 4 kB pages, 512 entries, fully associative
     const UINT32 lineSize = 4*KILO;
-    const UINT32 cacheSize = 32 * lineSize;
-    const UINT32 associativity = 32;
+    const UINT32 cacheSize = 512 * lineSize;
+    const UINT32 associativity = 512;
     const CACHE_ALLOC::STORE_ALLOCATION allocation = CACHE_ALLOC::STORE_ALLOCATE;
 
     const UINT32 max_sets = cacheSize / (lineSize * associativity);
@@ -68,10 +84,10 @@ LOCALFUN ITLB::CACHE itlb("ITLB", ITLB::cacheSize, ITLB::lineSize, ITLB::associa
 
 namespace DTLB
 {
-    // data TLB: 4 kB pages, 32 entries, fully associative
+    // data TLB: 4 kB pages, 512 entries, fully associative
     const UINT32 lineSize = 4*KILO;
-    const UINT32 cacheSize = 32 * lineSize;
-    const UINT32 associativity = 32;
+    const UINT32 cacheSize = 512 * lineSize;
+    const UINT32 associativity = 512;
     const CACHE_ALLOC::STORE_ALLOCATION allocation = CACHE_ALLOC::STORE_ALLOCATE;
 
     const UINT32 max_sets = cacheSize / (lineSize * associativity);
@@ -81,12 +97,14 @@ namespace DTLB
 }
 LOCALVAR DTLB::CACHE dtlb("DTLB", DTLB::cacheSize, DTLB::lineSize, DTLB::associativity);
 
+
+// ----------------- L1 ------------------------------------------------------------------------
 namespace IL1
 {
-    // 1st level instruction cache: 32 kB, 32 B lines, 32-way associative
+    // 1st level instruction cache: 32 kB, 32 B lines, 8-way associative
     const UINT32 cacheSize = 32*KILO;
-    const UINT32 lineSize = 32;
-    const UINT32 associativity = 32;
+    const UINT32 lineSize = 64;
+    const UINT32 associativity = 8;
     const CACHE_ALLOC::STORE_ALLOCATION allocation = CACHE_ALLOC::STORE_NO_ALLOCATE;
 
     const UINT32 max_sets = cacheSize / (lineSize * associativity);
@@ -98,10 +116,10 @@ LOCALVAR IL1::CACHE il1("L1 Instruction Cache", IL1::cacheSize, IL1::lineSize, I
 
 namespace DL1
 {
-    // 1st level data cache: 32 kB, 32 B lines, 32-way associative
+    // 1st level data cache: 32 kB, 32 B lines, 8-way associative
     const UINT32 cacheSize = 32*KILO;
-    const UINT32 lineSize = 32;
-    const UINT32 associativity = 32;
+    const UINT32 lineSize = 64;
+    const UINT32 associativity = 8;
     const CACHE_ALLOC::STORE_ALLOCATION allocation = CACHE_ALLOC::STORE_NO_ALLOCATE;
 
     const UINT32 max_sets = cacheSize / (lineSize * associativity);
@@ -111,12 +129,15 @@ namespace DL1
 }
 LOCALVAR DL1::CACHE dl1("L1 Data Cache", DL1::cacheSize, DL1::lineSize, DL1::associativity);
 
+
+
+//----------------- L2 --------------------------------------------------------------------------
 namespace UL2
 {
-    // 2nd level unified cache: 2 MB, 64 B lines, direct mapped
-    const UINT32 cacheSize = 2*MEGA;
+    // 2nd level unified cache: 256 KB, 64 B lines, 8-way associative
+    const UINT32 cacheSize = 256*KILO;
     const UINT32 lineSize = 64;
-    const UINT32 associativity = 1;
+    const UINT32 associativity = 8;
     const CACHE_ALLOC::STORE_ALLOCATION allocation = CACHE_ALLOC::STORE_ALLOCATE;
 
     const UINT32 max_sets = cacheSize / (lineSize * associativity);
@@ -125,12 +146,14 @@ namespace UL2
 }
 LOCALVAR UL2::CACHE ul2("L2 Unified Cache", UL2::cacheSize, UL2::lineSize, UL2::associativity);
 
+
+//--------------- L3 -----------------------------------------------------------------------------
 namespace UL3
 {
-    // 3rd level unified cache: 16 MB, 64 B lines, direct mapped
-    const UINT32 cacheSize = 16*MEGA;
+    // 3rd level unified cache: 15 MB, 64 B lines, 20-way associative
+    const UINT32 cacheSize = 15*MEGA;
     const UINT32 lineSize = 64;
-    const UINT32 associativity = 1;
+    const UINT32 associativity = 20;
     const CACHE_ALLOC::STORE_ALLOCATION allocation = CACHE_ALLOC::STORE_ALLOCATE;
 
     const UINT32 max_sets = cacheSize / (lineSize * associativity);
