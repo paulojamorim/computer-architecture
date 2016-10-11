@@ -44,9 +44,9 @@ Cache parameters:
 
 Intel Xeon(R) CPU E5-2620
 
-L1: 32 KB (8-way associative)
-L2: 256 KB (8-way associative)
-L3: 15 MB (20-way associative)
+L1: 32 KB 
+L2: 256 KB
+L3: 15 MB (Set to 16MB because 15 crash pintool) 
 
 Line size each levels:	64 bytes
 
@@ -63,6 +63,8 @@ static UINT64 itlb_miss = 0;
 static UINT64 dtlb_miss = 0;
 static UINT64 memory_access_inst = 0;
 static UINT64 memory_access_data = 0;
+
+static bool is_tlb_4kb = true; //not is 4MB
 
 typedef UINT32 CACHE_STATS; // type of cache hit/miss counters
 
@@ -115,7 +117,7 @@ namespace ITLB_4MB
 
     typedef CACHE_ROUND_ROBIN(max_sets, max_associativity, allocation) CACHE;
 }
-LOCALFUN ITLB::CACHE itlb_4mb("ITLB_4MB", ITLB_4MB::cacheSize, ITLB_4MB::lineSize, ITLB_4MB::associativity);
+LOCALFUN ITLB_4MB::CACHE itlb_4mb("ITLB_4MB", ITLB_4MB::cacheSize, ITLB_4MB::lineSize, ITLB_4MB::associativity);
 
 namespace DTLB_4MB
 {
@@ -130,7 +132,7 @@ namespace DTLB_4MB
 
     typedef CACHE_ROUND_ROBIN(max_sets, max_associativity, allocation) CACHE;
 }
-LOCALVAR DTLB::CACHE dtlb_4mb("DTLB_4MB", DTLB_4MB::cacheSize, DTLB_4MB::lineSize, DTLB_4MB::associativity);
+LOCALVAR DTLB_4MB::CACHE dtlb_4mb("DTLB_4MB", DTLB_4MB::cacheSize, DTLB_4MB::lineSize, DTLB_4MB::associativity);
 
 
 
@@ -138,10 +140,10 @@ LOCALVAR DTLB::CACHE dtlb_4mb("DTLB_4MB", DTLB_4MB::cacheSize, DTLB_4MB::lineSiz
 // ----------------- L1 ------------------------------------------------------------------------
 namespace IL1
 {
-    // 1st level instruction cache: 32 kB, 32 B lines, 8-way associative
+    // 1st level instruction cache: 32 kB, 32 B lines, 32-way associative
     const UINT32 cacheSize = 32*KILO;
-    const UINT32 lineSize = 32;
-    const UINT32 associativity = 32;
+    const UINT32 lineSize = 64;
+    const UINT32 associativity = 8;
     const CACHE_ALLOC::STORE_ALLOCATION allocation = CACHE_ALLOC::STORE_NO_ALLOCATE;
 
     const UINT32 max_sets = cacheSize / (lineSize * associativity);
@@ -155,8 +157,8 @@ namespace DL1
 {
     // 1st level data cache: 32 kB, 32 B lines, 8-way associative
     const UINT32 cacheSize = 32*KILO;
-    const UINT32 lineSize = 32;
-    const UINT32 associativity = 32;
+    const UINT32 lineSize = 64;
+    const UINT32 associativity = 8;
     const CACHE_ALLOC::STORE_ALLOCATION allocation = CACHE_ALLOC::STORE_NO_ALLOCATE;
 
     const UINT32 max_sets = cacheSize / (lineSize * associativity);
@@ -171,8 +173,8 @@ LOCALVAR DL1::CACHE dl1("L1 Data Cache", DL1::cacheSize, DL1::lineSize, DL1::ass
 //----------------- L2 --------------------------------------------------------------------------
 namespace UL2
 {
-    // 2nd level unified cache: 256 KB, 64 B lines, 8-way associative
-    const UINT32 cacheSize = 2*MEGA;
+    // 2nd level unified cache: 256 KB, 64 B lines, direct mapped
+    const UINT32 cacheSize = 256*KILO;
     const UINT32 lineSize = 64;
     const UINT32 associativity = 1;
     const CACHE_ALLOC::STORE_ALLOCATION allocation = CACHE_ALLOC::STORE_ALLOCATE;
@@ -187,7 +189,7 @@ LOCALVAR UL2::CACHE ul2("L2 Unified Cache", UL2::cacheSize, UL2::lineSize, UL2::
 //--------------- L3 -----------------------------------------------------------------------------
 namespace UL3
 {
-    // 3rd level unified cache: 15 MB, 64 B lines, 20-way associative
+    // 3rd level unified cache: 15 MB, 64 B lines, direct mapped
     const UINT32 cacheSize = 16*MEGA;
     const UINT32 lineSize = 64;
     const UINT32 associativity = 1;
@@ -243,9 +245,13 @@ LOCALFUN VOID InsRef(ADDRINT addr)
 {
     const UINT32 size = 1; // assuming access does not cross cache lines
     const CACHE_BASE::ACCESS_TYPE accessType = CACHE_BASE::ACCESS_TYPE_LOAD;
+    BOOL tlb;
 
     // ITLB
-    const BOOL tlb =  itlb.AccessSingleLine(addr, accessType);
+    if (is_tlb_4kb)
+        tlb =  itlb.AccessSingleLine(addr, accessType);
+    else
+        tlb =  itlb_4mb.AccessSingleLine(addr, accessType);
 
     // ITBL miss
     if (! tlb)
@@ -261,7 +267,12 @@ LOCALFUN VOID InsRef(ADDRINT addr)
 LOCALFUN VOID MemRefMulti(ADDRINT addr, UINT32 size, CACHE_BASE::ACCESS_TYPE accessType)
 {
     // DTLB
-    const BOOL tlb = dtlb.AccessSingleLine(addr, CACHE_BASE::ACCESS_TYPE_LOAD);
+    BOOL tlb;
+    
+    if (is_tlb_4kb)
+        tlb = dtlb.AccessSingleLine(addr, CACHE_BASE::ACCESS_TYPE_LOAD);
+    else
+        tlb = dtlb_4mb.AccessSingleLine(addr, CACHE_BASE::ACCESS_TYPE_LOAD);
 
     // DTBL miss
     if (! tlb)
@@ -354,14 +365,24 @@ VOID Fini(INT32 code, VOID *v)
 GLOBALFUN int main(int argc, char *argv[])
 {
     PIN_Init(argc, argv);
+    
+    //parser argument for TLB (-4kb or -4mb)
+    for (int i = 1; i < argc; ++i) 
+    {
+        std::string arg = argv[i];
+        if (arg == "-4kb")
+            is_tlb_4kb = true;
+
+        if (arg == "-4mb")
+            is_tlb_4kb = false;
+    }
 
     OutFile.open(KnobOutputFile.Value().c_str(), std::ios_base::app);
     
     INS_AddInstrumentFunction(Instruction, 0);
     PIN_AddFiniFunction(Fini, 0);
 
-    // Never returns
     PIN_StartProgram();
 
-    return 0; // make compiler happy
+    return 0;
 }
