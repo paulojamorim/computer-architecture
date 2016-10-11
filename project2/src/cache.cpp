@@ -222,7 +222,11 @@ LOCALFUN VOID MemRefMulti(ADDRINT addr, UINT32 size, CACHE_BASE::ACCESS_TYPE acc
 LOCALFUN VOID MemRefSingle(ADDRINT addr, UINT32 size, CACHE_BASE::ACCESS_TYPE accessType)
 {
     // DTLB
-    dtlb.AccessSingleLine(addr, CACHE_BASE::ACCESS_TYPE_LOAD);
+    const BOOL tlb = dtlb.AccessSingleLine(addr, CACHE_BASE::ACCESS_TYPE_LOAD);
+
+    // DTBL miss
+    if (! tlb)
+        dtlb_miss += 1;
 
     // first level D-cache
     const BOOL dl1Hit = dl1.AccessSingleLine(addr, accessType);
