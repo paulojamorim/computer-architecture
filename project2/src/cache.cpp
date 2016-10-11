@@ -38,8 +38,14 @@ END_LEGAL */
  */
 
 #include <iostream>
+#include <fstream>
 
 #include "pin.H"
+
+ofstream OutFile;
+
+static UINT64 tlb_miss_instruction = 0;
+
 
 typedef UINT32 CACHE_STATS; // type of cache hit/miss counters
 
@@ -133,6 +139,8 @@ namespace UL3
 }
 LOCALVAR UL3::CACHE ul3("L3 Unified Cache", UL3::cacheSize, UL3::lineSize, UL3::associativity);
 
+
+/*
 LOCALFUN VOID Fini(int code, VOID * v)
 {
     std::cerr << itlb;
@@ -141,7 +149,7 @@ LOCALFUN VOID Fini(int code, VOID * v)
     std::cerr << dl1;
     std::cerr << ul2;
     std::cerr << ul3;
-}
+}*/
 
 LOCALFUN VOID Ul2Access(ADDRINT addr, UINT32 size, CACHE_BASE::ACCESS_TYPE accessType)
 {
@@ -158,7 +166,11 @@ LOCALFUN VOID InsRef(ADDRINT addr)
     const CACHE_BASE::ACCESS_TYPE accessType = CACHE_BASE::ACCESS_TYPE_LOAD;
 
     // ITLB
-    itlb.AccessSingleLine(addr, accessType);
+    const BOOL tlb =  itlb.AccessSingleLine(addr, accessType);
+
+    // ITBL miss
+    if (! tlb)
+        tlb_miss_instruction += 1;
 
     // first level I-cache
     const BOOL il1Hit = il1.AccessSingleLine(addr, accessType);
@@ -228,10 +240,49 @@ LOCALFUN VOID Instruction(INS ins, VOID *v)
     }
 }
 
+
+KNOB<string> KnobOutputFile(KNOB_MODE_WRITEONCE, "pintool", "o", "inscount.out", "specify output file name");
+
+// This function is called when the application exits
+VOID Fini(INT32 code, VOID *v)
+{
+
+    //printf(" >> %lu ", c);
+    // Write to a file since cout and cerr maybe closed by the application
+    OutFile.setf(ios::showbase);
+    OutFile << "Sys - number of inst. " << tlb_miss_instruction << endl;
+    
+    /*  
+    OutFile << "Sys - largest inst. : " << largest_inst_sys << endl;
+    
+    OutFile << "Sys - lowest inst. : " << lowest_inst_sys << endl;
+    OutFile << "Sys - mean inst. size : " << (sysi_sum_size / sysi_count) << endl;
+    
+    OutFile << "\n" << endl;
+    
+    OutFile << "Prog - number of inst. " << prgi_count << endl;
+    OutFile << "Prog - largest inst. : " << largest_inst_prog << endl;
+    OutFile << "Prog - lowest inst. : " << lowest_inst_prog << endl;
+    OutFile << "Prog - mean inst. size : " << (prgi_sum_size / prgi_count) << endl;
+    */
+    OutFile.close();
+
+    std::cerr << itlb;
+    std::cerr << dtlb;
+    std::cerr << il1;
+    std::cerr << dl1;
+    std::cerr << ul2;
+    std::cerr << ul3;
+}
+
+
+
 GLOBALFUN int main(int argc, char *argv[])
 {
     PIN_Init(argc, argv);
 
+    OutFile.open(KnobOutputFile.Value().c_str(), std::ios_base::app);
+    
     INS_AddInstrumentFunction(Instruction, 0);
     PIN_AddFiniFunction(Fini, 0);
 
