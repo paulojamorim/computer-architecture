@@ -69,7 +69,7 @@ typedef UINT32 CACHE_STATS; // type of cache hit/miss counters
 #include "pin_cache.H"
 
 
-// -------  TLB -------------------------------------------------------------------------------
+// -------  TLB 4k ----------------------------------------------------------------------------
 namespace ITLB
 {
     // instruction TLB: 4 kB pages, 512 entries, fully associative
@@ -99,6 +99,40 @@ namespace DTLB
     typedef CACHE_ROUND_ROBIN(max_sets, max_associativity, allocation) CACHE;
 }
 LOCALVAR DTLB::CACHE dtlb("DTLB", DTLB::cacheSize, DTLB::lineSize, DTLB::associativity);
+
+
+//------- TLB 4MB ------------------------------------------------------------------------------
+namespace ITLB_4MB
+{
+    // instruction TLB: 4 kB pages, 512 entries, fully associative
+    const UINT32 lineSize = 4*MEGA;
+    const UINT32 cacheSize = 512 * lineSize;
+    const UINT32 associativity = 512;
+    const CACHE_ALLOC::STORE_ALLOCATION allocation = CACHE_ALLOC::STORE_ALLOCATE;
+
+    const UINT32 max_sets = cacheSize / (lineSize * associativity);
+    const UINT32 max_associativity = associativity;
+
+    typedef CACHE_ROUND_ROBIN(max_sets, max_associativity, allocation) CACHE;
+}
+LOCALFUN ITLB::CACHE itlb_4mb("ITLB_4MB", ITLB_4MB::cacheSize, ITLB_4MB::lineSize, ITLB_4MB::associativity);
+
+namespace DTLB_4MB
+{
+    // data TLB: 4 kB pages, 512 entries, fully associative
+    const UINT32 lineSize = 4*MEGA;
+    const UINT32 cacheSize = 512 * lineSize;
+    const UINT32 associativity = 512;
+    const CACHE_ALLOC::STORE_ALLOCATION allocation = CACHE_ALLOC::STORE_ALLOCATE;
+
+    const UINT32 max_sets = cacheSize / (lineSize * associativity);
+    const UINT32 max_associativity = associativity;
+
+    typedef CACHE_ROUND_ROBIN(max_sets, max_associativity, allocation) CACHE;
+}
+LOCALVAR DTLB::CACHE dtlb_4mb("DTLB_4MB", DTLB_4MB::cacheSize, DTLB_4MB::lineSize, DTLB_4MB::associativity);
+
+
 
 
 // ----------------- L1 ------------------------------------------------------------------------
