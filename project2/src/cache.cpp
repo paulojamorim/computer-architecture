@@ -59,7 +59,8 @@ Line size each levels:	64 bytes
 
 ofstream OutFile;
 
-static UINT64 tlb_miss_instruction = 0;
+static UINT64 itlb_miss = 0;
+static UINT64 dtlb_miss = 0;
 
 typedef UINT32 CACHE_STATS; // type of cache hit/miss counters
 
@@ -193,7 +194,7 @@ LOCALFUN VOID InsRef(ADDRINT addr)
 
     // ITBL miss
     if (! tlb)
-        tlb_miss_instruction += 1;
+        itlb_miss += 1;
 
     // first level I-cache
     const BOOL il1Hit = il1.AccessSingleLine(addr, accessType);
@@ -205,7 +206,11 @@ LOCALFUN VOID InsRef(ADDRINT addr)
 LOCALFUN VOID MemRefMulti(ADDRINT addr, UINT32 size, CACHE_BASE::ACCESS_TYPE accessType)
 {
     // DTLB
-    dtlb.AccessSingleLine(addr, CACHE_BASE::ACCESS_TYPE_LOAD);
+    const BOOL tlb = dtlb.AccessSingleLine(addr, CACHE_BASE::ACCESS_TYPE_LOAD);
+
+    // DTBL miss
+    if (! tlb)
+        dtlb_miss += 1;
 
     // first level D-cache
     const BOOL dl1Hit = dl1.Access(addr, size, accessType);
@@ -273,7 +278,7 @@ VOID Fini(INT32 code, VOID *v)
     //printf(" >> %lu ", c);
     // Write to a file since cout and cerr maybe closed by the application
     OutFile.setf(ios::showbase);
-    OutFile << "Sys - number of inst. " << tlb_miss_instruction << endl;
+    OutFile << "Sys - number of inst. " << itlb_miss << endl;
     
     /*  
     OutFile << "Sys - largest inst. : " << largest_inst_sys << endl;
