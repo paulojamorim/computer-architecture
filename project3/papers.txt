@@ -10,4 +10,6 @@
 
 6 - Vasileios Karakostas, Jayneel Gandhi, Furkan Ayar, Adrián Cristal, Mark D. Hill, Kathryn S. McKinley, Mario Nemirovsky, Michael M. Swift, and Osman Ünsal. 2015. Redundant memory mappings for fast access to large memories. In Proceedings of the 42nd Annual International Symposium on Computer Architecture (ISCA '15). ACM, New York, NY, USA, 66-78. DOI: http://dx.doi.org/10.1145/2749469.2749471
 
-7 - Andreas Sembrant, Erik Hagersten, and David Black-Schaffer. 2014. The Direct-to-Data (D2D) cache: navigating the cache hierarchy with a single lookup. In Proceeding of the 41st annual international symposium on Computer architecuture (ISCA '14). IEEE Press, Piscataway, NJ, USA, 133-144. DOI: http://dx.doi.org/10.1145/2678373.2665694 
+7 - Andreas Sembrant, Erik Hagersten, and David Black-Schaffer. 2014. The Direct-to-Data (D2D) cache: navigating the cache hierarchy with a single lookup. In Proceeding of the 41st annual international symposium on Computer architecuture (ISCA '14). IEEE Press, Piscataway, NJ, USA, 133-144. DOI: http://dx.doi.org/10.1145/2678373.2665694
+
+8 - Tri M. Nguyen and David Wentzlaff. 2015. MORC: a manycore-oriented compressed cache. In Proceedings of the 48th International Symposium on Microarchitecture (MICRO-48). ACM, New York, NY, USA, 76-88. DOI=http://dx.doi.org/10.1145/2830772.2830828  
