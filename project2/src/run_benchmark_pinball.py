@@ -20,7 +20,7 @@ def main(spec_folder, spec_benchmark):
     for b in benchmark:
         for pag in ['-4kb', '-4mb']:
             txt_name = b[0].split("/")[-1]
-            command = "pin -xyzzy -reserve_memory " + b[2] + ".address -t " + os.path.abspath("./obj-intel64/cache.so") + " -o " + txt_name + "_" + pag.split('-')[-1] + " " + pag + " -replay -replay:basename " + spec_prefix + " -- " + "${PIN_ROOT}/extras/pinplay/bin/intel64/nullapp"
+            command = "pin -xyzzy -reserve_memory " + b[2] + ".address -t " + os.path.abspath("./obj-intel64/cache.so") + " -pinplay -o " + txt_name + "_" + pag.split('-')[-1] + " " + pag + " -replay -replay:basename " + spec_prefix + " -- " + "${PIN_ROOT}/extras/pinplay/bin/intel64/nullapp"
             print "Running command:  ", command
             print "\n"
             call([command], shell=True)

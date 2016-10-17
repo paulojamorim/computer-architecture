@@ -71,6 +71,8 @@ static UINT64 memory_access_inst = 0;
 static UINT64 memory_access_data = 0;
 
 static bool is_tlb_4kb = true; //not is 4MB
+static bool is_pin_play = false; //run tranditional mode (with out pinplay)
+
 
 typedef UINT32 CACHE_STATS; // type of cache hit/miss counters
 
@@ -366,8 +368,6 @@ VOID Fini(INT32 code, VOID *v)
 GLOBALFUN int main(int argc, char *argv[])
 {
     PIN_Init(argc, argv);
-   
-    pinplay.Activate(argc, argv,KnobPinPlayLogger, KnobPinPlayReplayer);
 
     //parser argument for TLB (-4kb or -4mb)
     for (int i = 1; i < argc; ++i) 
@@ -378,6 +378,12 @@ GLOBALFUN int main(int argc, char *argv[])
 
         if (arg == "-4mb")
             is_tlb_4kb = false;
+
+        if (arg == "-pinplay")
+        {
+            pinplay.Activate(argc, argv,KnobPinPlayLogger, KnobPinPlayReplayer);
+            is_pin_play = true;
+        }
     }
 
     OutFile.open(KnobOutputFile.Value().c_str(), std::ios_base::app);
