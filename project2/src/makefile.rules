@@ -14,37 +14,16 @@
 
 ###### Place all generic definitions here ######
 
+## --- to pinplay support -------------------------------------------------------------
+
+PINPLAY_HOME=$(PIN_ROOT)/extras/pinplay/
+PINPLAY_INCLUDE_HOME=$(PINPLAY_HOME)/include
+PINPLAY_LIB_HOME=$(PINPLAY_HOME)/lib/$(TARGET)
+
+TOOL_CXXFLAGS += -D_FILE_OFFSET_BITS=64 -I$(PIN_ROOT)/source/tools/InstLib -I$(PINPLAY_INCLUDE_HOME) -I$(PIN_ROOT)/source/tools/PinPoints
+
+TOOL_LPATHS += $(PINPLAY_HOME)/lib/intel64/libpinplay.a $(PINPLAY_HOME)/lib-ext/intel64/libbz2.a $(PINPLAY_HOME)/lib-ext/intel64/libzlib.a $(CONTROLLERLIB)
+
 TEST_TOOL_ROOTS := cache
 
-
-# This defines any additional object files that need to be compiled.
-OBJECT_ROOTS :=
-
-# This defines any additional dlls (shared objects), other than the pintools, that need to be compiled.
-DLL_ROOTS :=
-
-# This defines any static libraries (archives), that need to be built.
-LIB_ROOTS :=
-
-
-# This defines the list of tests that should run in sanity. It should include all the tests listed in
-# TEST_TOOL_ROOTS and TEST_ROOTS excluding only unstable tests.
-SANITY_SUBSET := $(TEST_TOOL_ROOTS) $(TEST_ROOTS)
-
-##############################################################
-#
-# Build rules
-#
-##############################################################
-
-# This section contains the build rules for all binaries that have special build rules.
-# See makefile.default.rules for the default build rules.
-
-ifeq ($(TARGET_OS),windows)
-    ACCESS_PROTECTION_APP_EXPORTS := /EXPORT:NotifyPinAfterMmap
-endif
-
-###### Special applications' build rules ######
-
-$(OBJDIR)access_protection_app$(EXE_SUFFIX): access_protection_app.cpp
-	$(APP_CXX) $(APP_CXXFLAGS_NOOPT) $(COMP_EXE)$@ $< $(APP_LDFLAGS_NOOPT) $(ACCESS_PROTECTION_APP_EXPORTS) $(APP_LIBS)
+TOOLNAMES=cache 

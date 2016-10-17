@@ -56,6 +56,12 @@ Line size each levels:	64 bytes
 #include <fstream>
 
 #include "pin.H"
+#include "pinplay.H"
+
+PINPLAY_ENGINE pinplay;
+KNOB<BOOL> KnobPinPlayLogger(KNOB_MODE_WRITEONCE, "pintool", "log", "0", "Activate the pinplay logger");
+KNOB<BOOL> KnobPinPlayReplayer(KNOB_MODE_WRITEONCE, "pintool", "replay", "0", "Activate the pinplay replayer");
+KNOB<string> KnobOutputFile(KNOB_MODE_WRITEONCE, "pintool", "o", "inscount.out", "specify output file name");
 
 ofstream OutFile;
 
@@ -338,9 +344,6 @@ LOCALFUN VOID Instruction(INS ins, VOID *v)
     }
 }
 
-
-KNOB<string> KnobOutputFile(KNOB_MODE_WRITEONCE, "pintool", "o", "inscount.out", "specify output file name");
-
 // This function is called when the application exits
 VOID Fini(INT32 code, VOID *v)
 {
@@ -360,12 +363,12 @@ VOID Fini(INT32 code, VOID *v)
     OutFile.close();
 }
 
-
-
 GLOBALFUN int main(int argc, char *argv[])
 {
     PIN_Init(argc, argv);
-    
+   
+    pinplay.Activate(argc, argv,KnobPinPlayLogger, KnobPinPlayReplayer);
+
     //parser argument for TLB (-4kb or -4mb)
     for (int i = 1; i < argc; ++i) 
     {
@@ -386,3 +389,9 @@ GLOBALFUN int main(int argc, char *argv[])
 
     return 0;
 }
+
+/* Pinplay replay
+ 
+pin -xyzzy -reserve_memory pinball/foo.address -t your-tool.so -replay -replay:basename pinball/foo -- $PIN_ROOT/extrans/pinplay/bin/intel64/nullapp [for intel64 pinballs]
+
+*/
