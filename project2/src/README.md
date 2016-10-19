@@ -31,4 +31,4 @@
 
 ##### With pinplay
 * Download pinball from [http://snipersim.org/Pinballs](http://snipersim.org/Pinballs). I used this [pinball.](http://snipersim.org/documents/pinballs/cpu2006-pinpoints-w0-d1B-m1.tar)
-* `python run_benchmark_pinball.py ./cpu2006_pinballs_folder/ h264` (this script save all result same folder for h264_4kb.txt and h264_4mb.txt)
+* `python run_benchmark_pinball.py ./cpu2006_pinballs_folder/ h264` (this script save all result same folder. Exemple h264_4kb.txt and h264_4mb.txt)
