@@ -16,7 +16,7 @@
 ### Benchmark toy
 * It is a small program that applies mean filter in an image. The amount of consumed memory in accordance with the input image size.
 * An image sample is proved.
-* To run: `./toy -i toy_input.bmp`
+* To run: `./toy toy_input.bmp output_img.png`
 
 ### Compile: 
 * `./make_all.sh` (compile all code and dependencies)
@@ -24,10 +24,10 @@
 ### Run
 
 ##### Without pinplay: 
-* `pin -t ./obj-intel64/cache.so -4kb -o ./result.txt -- ./toy -i toy_input.bmp`
-- -4kb (pages of 4kb)
-- -4mb (pages of 4mb)
-- -o (output file with result)
+* `pin -t ./obj-intel64/cache.so -4kb -o ./result.txt -- ./toy toy_input.bmp output_img.png`
+* -4kb (pages of 4kb)
+* -4mb (pages of 4mb)
+* -o (output file with result)
 
 ##### With pinplay
 * Download pinball from [http://snipersim.org/Pinballs](http://snipersim.org/Pinballs). I used this [pinball.](http://snipersim.org/documents/pinballs/cpu2006-pinpoints-w0-d1B-m1.tar)
