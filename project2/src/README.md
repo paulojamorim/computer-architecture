@@ -21,7 +21,7 @@
 ### Compile: 
 * `./make_all.sh` (compile all code and dependencies)
 
-### To test 
+### Run
 
 ##### Without pinplay: 
 * `pin -t ./obj-intel64/cache.so -4kb -o ./result.txt -- ./toy -i toy_input.bmp`
