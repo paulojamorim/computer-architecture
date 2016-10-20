@@ -9,8 +9,8 @@
 
 ##### Set PIN environment variable:
 
-* `export PIN_ROOT=YOUR_PIN_OR_PINPLAY_DIRECTORY`
-* `export PATH=$PATH:YOUR_PIN_OR_PINPLAY_DIRECTORY`
+* `export PIN_ROOT=YOUR_PIN_OR_PINPLAY_DIRECTORY/`
+* `export PATH=$PATH:YOUR_PIN_OR_PINPLAY_DIRECTORY/`
 * `sudo apt-get install cimg-dev` (to compile benchmark toy)
 
 ### Benchmark toy

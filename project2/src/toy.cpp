@@ -36,7 +36,5 @@ int main(int argc, char *argv[])
     cimg_for5x5(src,x,y,0,k,N,float) dest(x,y,k) = N.sum()/(5*5);   
     dest.save_png(arg_out.c_str());
     
-    cout << "\nFinish!\n";
-    
     return 0;
 }
