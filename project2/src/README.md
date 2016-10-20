@@ -19,12 +19,12 @@
 * To run: `./toy toy_input.bmp output_img.png`
 
 ### Compile: 
-* `./make_all.sh` (compile all code and dependencies)
+* `./make_all.sh` (compile all code and dependencies) NOTE: May take a few minutes.
 
 ### Run
 
 ##### Without pinplay: 
-* `pin -t ./obj-intel64/cache.so -4kb -o ./result.txt -- ./toy toy_input.bmp output_img.png`
+* `run_toy_with_pin.sh`
 * -4kb (pages of 4kb)
 * -4mb (pages of 4mb)
 * -o (output file with result)
