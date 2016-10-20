@@ -15,7 +15,7 @@
 
 ### Benchmark toy
 * It is a small program that applies mean filter in an image. The amount of consumed memory in accordance with the input image size.
-* An image sample is proved.
+* An image sample is proved. In particular I tested with a 271.66 MB of [http://www.jpl.nasa.gov/spaceimages/details.php?id=PIA18912](Milky Way galaxy) image from JPL NASA.
 * To run: `./toy toy_input.bmp output_img.png`
 
 ### Compile: 
