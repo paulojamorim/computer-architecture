@@ -1,0 +1,11 @@
+Benchmark,Memory access (instructions), TLB misses (instructions), page table access (instructions), memory access (data), TLB misses (data), page table access (data)
+bzip2,819,1,3,644253,84437,253311
+cactusADM,347,1,3,2881064,67,201
+gemsFDTD,773,1,3,8785391,185,555
+gobmk,4158,1,3,200648,2636,7908
+gromacs,2354,1,3,196398,8020,24060
+h264,4934,1,3,71166,22672,68016
+hmmer,140,1,3,132597,489,1467
+lbm,40,1,3,15185501,117166,351498
+milc,296,1,3,22877684,403947,1211841
+tonto,4809,2,6,16312,137,411
