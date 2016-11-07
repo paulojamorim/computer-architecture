@@ -1,0 +1,29 @@
+##############################################################
+#
+# This file includes all the test targets as well as all the
+# non-default build rules and test recipes.
+#
+##############################################################
+
+
+##############################################################
+#
+# Test targets
+#
+##############################################################
+
+###### Place all generic definitions here ######
+
+## --- to pinplay support -------------------------------------------------------------
+
+PINPLAY_HOME=$(PIN_ROOT)/extras/pinplay/
+PINPLAY_INCLUDE_HOME=$(PINPLAY_HOME)/include
+PINPLAY_LIB_HOME=$(PINPLAY_HOME)/lib/$(TARGET)
+
+TOOL_CXXFLAGS += -D_FILE_OFFSET_BITS=64 -I$(PIN_ROOT)/source/tools/InstLib -I$(PINPLAY_INCLUDE_HOME) -I$(PIN_ROOT)/source/tools/PinPoints
+
+TOOL_LPATHS += $(PINPLAY_HOME)/lib/intel64/libpinplay.a $(PINPLAY_HOME)/lib-ext/intel64/libbz2.a $(PINPLAY_HOME)/lib-ext/intel64/libzlib.a $(CONTROLLERLIB)
+
+TEST_TOOL_ROOTS := cache
+
+TOOLNAMES=cache 
