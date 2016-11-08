@@ -317,9 +317,31 @@ LOCALFUN VOID Instruction(INS ins, VOID *v)
         IARG_INST_PTR,
         IARG_END);
 
+    //----------------------------------------------------------
+    
+    //UINT32 operandCount = INS_OperandCount (ins);
+    REG baseReg;
+    ADDRDELTA offset;
+
+    baseReg = INS_MemoryBaseReg(ins);
+    offset = INS_MemoryDisplacement(ins);
+
+    cout << baseReg; 
+    cout << "\n";
+    cout << offset;
+    cout << "\n\n";
+
+    //---------------------------------------------------------
+
+
+
     if (INS_IsMemoryRead(ins) && INS_IsStandardMemop(ins))
     {
         const UINT32 size = INS_MemoryReadSize(ins);
+
+        //displacement  = INS_OperandMemoryDisplacement (ins);
+        
+
         const AFUNPTR countFun = (size <= 4 ? (AFUNPTR) MemRefSingle : (AFUNPTR) MemRefMulti);
 
         // only predicated-on memory instructions access D-cache
