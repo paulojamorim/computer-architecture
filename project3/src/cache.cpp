@@ -65,6 +65,8 @@ KNOB<string> KnobOutputFile(KNOB_MODE_WRITEONCE, "pintool", "o", "inscount.out",
 
 ofstream OutFile;
 
+FILE * trace;
+
 static UINT64 itlb_miss = 0;
 static UINT64 dtlb_miss = 0;
 static UINT64 memory_access_inst = 0;
@@ -309,39 +311,90 @@ LOCALFUN VOID MemRefSingle(ADDRINT addr, UINT32 size, CACHE_BASE::ACCESS_TYPE ac
     if ( ! dl1Hit) Ul2Access(addr, size, accessType, true);
 }
 
+// ----------------- cache compression functions --------------------
+
+
+// Print a memory read record
+VOID RecordMemRead(VOID * ip, VOID * addr)
+{
+    //fprintf(trace,"%p: R %p\n", ip, addr);
+    fprintf(trace,"R %p\n", addr);
+
+}
+
+// Print a memory write record
+VOID RecordMemWrite(VOID * ip, VOID * addr)
+{
+    //fprintf(trace,"%p: W %p\n", ip, addr);
+    fprintf(trace,"W %p\n", addr);
+
+}
+
+//-------------------------------------------------------------------
+
+
 LOCALFUN VOID Instruction(INS ins, VOID *v)
 {
+
+
+    // Instruments memory accesses using a predicated call, i.e.
+    // the instrumentation is called iff the instruction will actually be executed.
+    //
+    // On the IA-32 and Intel(R) 64 architectures conditional moves and REP 
+    // prefixed instructions appear as predicated instructions in Pin.
+    UINT32 memOperands = INS_MemoryOperandCount(ins);
+
+    // Iterate over each memory operand of the instruction.
+    for (UINT32 memOp = 0; memOp < memOperands; memOp++)
+    {
+        if (INS_MemoryOperandIsRead(ins, memOp))
+        {
+
+	        INS_InsertPredicatedCall(
+				   ins, IPOINT_BEFORE, (AFUNPTR)RecordMemRead,
+				   IARG_MEMORYOP_EA, memOp,
+				   IARG_UINT32, INS_MemoryOperandSize(ins, memOp),
+				   IARG_END);
+
+
+
+            /*
+            INS_InsertPredicatedCall(
+                ins, IPOINT_BEFORE, (AFUNPTR)RecordMemRead,
+                IARG_INST_PTR,
+                IARG_MEMORYOP_EA, memOp,
+                IARG_END);*/
+        }
+        // Note that in some architectures a single memory operand can be 
+        // both read and written (for instance incl (%eax) on IA-32)
+        // In that case we instrument it once for read and once for write.
+        if (INS_MemoryOperandIsWritten(ins, memOp))
+        {
+	        INS_InsertPredicatedCall(
+				   ins, IPOINT_BEFORE, (AFUNPTR)RecordMemWrite,
+				   IARG_MEMORYOP_EA, memOp,
+				   IARG_UINT32, INS_MemoryOperandSize(ins, memOp),
+				   IARG_END);
+
+            /*
+            INS_InsertPredicatedCall(
+                ins, IPOINT_BEFORE, (AFUNPTR)RecordMemWrite,
+                IARG_INST_PTR,
+                IARG_MEMORYOP_EA, memOp,
+                IARG_END);*/
+        }
+    }
+
+
     // all instruction fetches access I-cache
     INS_InsertCall(
         ins, IPOINT_BEFORE, (AFUNPTR)InsRef,
         IARG_INST_PTR,
         IARG_END);
 
-    //----------------------------------------------------------
-    
-    //UINT32 operandCount = INS_OperandCount (ins);
-    REG baseReg;
-    ADDRDELTA offset;
-
-    baseReg = INS_MemoryBaseReg(ins);
-    offset = INS_MemoryDisplacement(ins);
-
-    cout << baseReg; 
-    cout << "\n";
-    cout << offset;
-    cout << "\n\n";
-
-    //---------------------------------------------------------
-
-
-
     if (INS_IsMemoryRead(ins) && INS_IsStandardMemop(ins))
     {
         const UINT32 size = INS_MemoryReadSize(ins);
-
-        //displacement  = INS_OperandMemoryDisplacement (ins);
-        
-
         const AFUNPTR countFun = (size <= 4 ? (AFUNPTR) MemRefSingle : (AFUNPTR) MemRefMulti);
 
         // only predicated-on memory instructions access D-cache
@@ -366,12 +419,17 @@ LOCALFUN VOID Instruction(INS ins, VOID *v)
             IARG_UINT32, CACHE_BASE::ACCESS_TYPE_STORE,
             IARG_END);
     }
+
+
 }
 
 // This function is called when the application exits
 VOID Fini(INT32 code, VOID *v)
 {
-
+    fprintf(trace, "#eof\n");
+    fclose(trace);
+   
+    /* 
     OutFile.setf(ios::showbase);
     
     
@@ -384,13 +442,14 @@ VOID Fini(INT32 code, VOID *v)
     OutFile << "Page table access - Data. " << dtlb_miss*3 << endl;
 
     
-    OutFile.close();
+    OutFile.close();*/
 }
 
 GLOBALFUN int main(int argc, char *argv[])
 {
     PIN_Init(argc, argv);
 
+    trace = fopen("pinatrace.out", "w");
     //parser argument for TLB (-4kb or -4mb)
     for (int i = 1; i < argc; ++i) 
     {
