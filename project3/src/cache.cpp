@@ -315,7 +315,7 @@ LOCALFUN VOID MemRefSingle(ADDRINT addr, UINT32 size, CACHE_BASE::ACCESS_TYPE ac
 
 
 // Print a memory read record
-VOID RecordMemRead(VOID * ip, VOID * addr)
+VOID RecordMemRead(VOID * addr)
 {
     //fprintf(trace,"%p: R %p\n", ip, addr);
     fprintf(trace,"R %p\n", addr);
@@ -323,7 +323,7 @@ VOID RecordMemRead(VOID * ip, VOID * addr)
 }
 
 // Print a memory write record
-VOID RecordMemWrite(VOID * ip, VOID * addr)
+VOID RecordMemWrite(VOID * addr)
 {
     //fprintf(trace,"%p: W %p\n", ip, addr);
     fprintf(trace,"W %p\n", addr);
