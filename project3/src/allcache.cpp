@@ -38,26 +38,15 @@ END_LEGAL */
  */
 
 
-/* -----------------------------------------------
-
-Cache parameters:
-
-Intel Xeon(R) CPU E5-2620
-
-L1: 32 KB 
-L2: 256 KB
-L3: 15 MB (Set to 16MB because 15 crash pintool) 
-
-Line size each levels:	64 bytes
-
---------------------------------------------------*/
-
 #include <iostream>
 #include <fstream>
 
 #include "pin.H"
 #include "pinplay.H"
 #include "cache.H"
+#include "pin_cache.H"
+
+//typedef UINT32 CACHE_STATS; // type of cache hit/miss counters
 
 PINPLAY_ENGINE pinplay;
 KNOB<BOOL> KnobPinPlayLogger(KNOB_MODE_WRITEONCE, "pintool", "log", "0", "Activate the pinplay logger");
@@ -67,27 +56,22 @@ KNOB<string> KnobOutputFile(KNOB_MODE_WRITEONCE, "pintool", "o", "inscount.out",
 ofstream OutFile;
 
 FILE * trace;
-
-static UINT64 itlb_miss = 0;
-static UINT64 dtlb_miss = 0;
-static UINT64 memory_access_inst = 0;
-static UINT64 memory_access_data = 0;
-
-static bool is_tlb_4kb = true; //not is 4MB
 static bool is_pin_play = false; //run tranditional mode (with out pinplay)
 
-//typedef UINT32 CACHE_STATS; // type of cache hit/miss counters
+const int L1I = 0;
+const int L1D = 1;
+const int L2U = 2;
+const int L3U = 3;
 
-#include "pin_cache.H"
+int CCL; //current cache level
 
 
-// -------  TLB 4k ----------------------------------------------------------------------------
 namespace ITLB
 {
-    // instruction TLB: 4 kB pages, 512 entries, fully associative
+    // instruction TLB: 4 kB pages, 32 entries, fully associative
     const UINT32 lineSize = 4*KILO;
-    const UINT32 cacheSize = 512 * lineSize;
-    const UINT32 associativity = 512;
+    const UINT32 cacheSize = 32 * lineSize;
+    const UINT32 associativity = 32;
     const CACHE_ALLOC::STORE_ALLOCATION allocation = CACHE_ALLOC::STORE_ALLOCATE;
 
     const UINT32 max_sets = cacheSize / (lineSize * associativity);
@@ -99,10 +83,10 @@ LOCALFUN ITLB::CACHE itlb("ITLB", ITLB::cacheSize, ITLB::lineSize, ITLB::associa
 
 namespace DTLB
 {
-    // data TLB: 4 kB pages, 512 entries, fully associative
+    // data TLB: 4 kB pages, 32 entries, fully associative
     const UINT32 lineSize = 4*KILO;
-    const UINT32 cacheSize = 512 * lineSize;
-    const UINT32 associativity = 512;
+    const UINT32 cacheSize = 32 * lineSize;
+    const UINT32 associativity = 32;
     const CACHE_ALLOC::STORE_ALLOCATION allocation = CACHE_ALLOC::STORE_ALLOCATE;
 
     const UINT32 max_sets = cacheSize / (lineSize * associativity);
@@ -112,48 +96,12 @@ namespace DTLB
 }
 LOCALVAR DTLB::CACHE dtlb("DTLB", DTLB::cacheSize, DTLB::lineSize, DTLB::associativity);
 
-
-//------- TLB 4MB ------------------------------------------------------------------------------
-namespace ITLB_4MB
-{
-    // instruction TLB: 4 kB pages, 512 entries, fully associative
-    const UINT32 lineSize = 4*MEGA;
-    const UINT32 cacheSize = 512 * lineSize;
-    const UINT32 associativity = 512;
-    const CACHE_ALLOC::STORE_ALLOCATION allocation = CACHE_ALLOC::STORE_ALLOCATE;
-
-    const UINT32 max_sets = cacheSize / (lineSize * associativity);
-    const UINT32 max_associativity = associativity;
-
-    typedef CACHE_ROUND_ROBIN(max_sets, max_associativity, allocation) CACHE;
-}
-LOCALFUN ITLB_4MB::CACHE itlb_4mb("ITLB_4MB", ITLB_4MB::cacheSize, ITLB_4MB::lineSize, ITLB_4MB::associativity);
-
-namespace DTLB_4MB
-{
-    // data TLB: 4 kB pages, 512 entries, fully associative
-    const UINT32 lineSize = 4*MEGA;
-    const UINT32 cacheSize = 512 * lineSize;
-    const UINT32 associativity = 512;
-    const CACHE_ALLOC::STORE_ALLOCATION allocation = CACHE_ALLOC::STORE_ALLOCATE;
-
-    const UINT32 max_sets = cacheSize / (lineSize * associativity);
-    const UINT32 max_associativity = associativity;
-
-    typedef CACHE_ROUND_ROBIN(max_sets, max_associativity, allocation) CACHE;
-}
-LOCALVAR DTLB_4MB::CACHE dtlb_4mb("DTLB_4MB", DTLB_4MB::cacheSize, DTLB_4MB::lineSize, DTLB_4MB::associativity);
-
-
-
-
-// ----------------- L1 ------------------------------------------------------------------------
 namespace IL1
 {
     // 1st level instruction cache: 32 kB, 32 B lines, 32-way associative
     const UINT32 cacheSize = 32*KILO;
-    const UINT32 lineSize = 64;
-    const UINT32 associativity = 8;
+    const UINT32 lineSize = 32;
+    const UINT32 associativity = 32;
     const CACHE_ALLOC::STORE_ALLOCATION allocation = CACHE_ALLOC::STORE_NO_ALLOCATE;
 
     const UINT32 max_sets = cacheSize / (lineSize * associativity);
@@ -165,10 +113,10 @@ LOCALVAR IL1::CACHE il1("L1 Instruction Cache", IL1::cacheSize, IL1::lineSize, I
 
 namespace DL1
 {
-    // 1st level data cache: 32 kB, 32 B lines, 8-way associative
+    // 1st level data cache: 32 kB, 32 B lines, 32-way associative
     const UINT32 cacheSize = 32*KILO;
-    const UINT32 lineSize = 64;
-    const UINT32 associativity = 8;
+    const UINT32 lineSize = 32;
+    const UINT32 associativity = 32;
     const CACHE_ALLOC::STORE_ALLOCATION allocation = CACHE_ALLOC::STORE_NO_ALLOCATE;
 
     const UINT32 max_sets = cacheSize / (lineSize * associativity);
@@ -178,13 +126,10 @@ namespace DL1
 }
 LOCALVAR DL1::CACHE dl1("L1 Data Cache", DL1::cacheSize, DL1::lineSize, DL1::associativity);
 
-
-
-//----------------- L2 --------------------------------------------------------------------------
 namespace UL2
 {
-    // 2nd level unified cache: 256 KB, 64 B lines, direct mapped
-    const UINT32 cacheSize = 256*KILO;
+    // 2nd level unified cache: 2 MB, 64 B lines, direct mapped
+    const UINT32 cacheSize = 2*MEGA;
     const UINT32 lineSize = 64;
     const UINT32 associativity = 1;
     const CACHE_ALLOC::STORE_ALLOCATION allocation = CACHE_ALLOC::STORE_ALLOCATE;
@@ -195,11 +140,9 @@ namespace UL2
 }
 LOCALVAR UL2::CACHE ul2("L2 Unified Cache", UL2::cacheSize, UL2::lineSize, UL2::associativity);
 
-
-//--------------- L3 -----------------------------------------------------------------------------
 namespace UL3
 {
-    // 3rd level unified cache: 15 MB, 64 B lines, direct mapped
+    // 3rd level unified cache: 16 MB, 64 B lines, direct mapped
     const UINT32 cacheSize = 16*MEGA;
     const UINT32 lineSize = 64;
     const UINT32 associativity = 1;
@@ -212,107 +155,7 @@ namespace UL3
 LOCALVAR UL3::CACHE ul3("L3 Unified Cache", UL3::cacheSize, UL3::lineSize, UL3::associativity);
 
 
-/*
-LOCALFUN VOID Fini(int code, VOID * v)
-{
-    std::cerr << itlb;
-    std::cerr << dtlb;
-    std::cerr << il1;
-    std::cerr << dl1;
-    std::cerr << ul2;
-    std::cerr << ul3;
-}*/
-
-LOCALFUN VOID Ul2Access(ADDRINT addr, UINT32 size, CACHE_BASE::ACCESS_TYPE accessType, bool is_data)
-{
-    // second level unified cache
-    const BOOL ul2Hit = ul2.Access(addr, size, accessType);
-
-    // third level unified cache
-    if ( ! ul2Hit)
-    {
-        const BOOL ul3Hit = ul3.Access(addr, size, accessType);
-
-        //L3 Miss
-        if (! ul3Hit)
-        {
-            if (is_data == true)
-            {
-                //data miss (memory access)
-                memory_access_data += 1;
-
-            }
-            else
-            {
-                // inst miss (memory access)
-                memory_access_inst += 1;
-            }
-        }
-    }
-}
-
-LOCALFUN VOID InsRef(ADDRINT addr)
-{
-    const UINT32 size = 1; // assuming access does not cross cache lines
-    const CACHE_BASE::ACCESS_TYPE accessType = CACHE_BASE::ACCESS_TYPE_LOAD;
-    BOOL tlb;
-
-    // ITLB
-    if (is_tlb_4kb)
-        tlb =  itlb.AccessSingleLine(addr, accessType);
-    else
-        tlb =  itlb_4mb.AccessSingleLine(addr, accessType);
-
-    // ITBL miss
-    if (! tlb)
-        itlb_miss += 1;
-
-    // first level I-cache
-    const BOOL il1Hit = il1.AccessSingleLine(addr, accessType);
-
-    // second level unified Cache
-    if ( ! il1Hit) Ul2Access(addr, size, accessType, false);
-}
-
-LOCALFUN VOID MemRefMulti(ADDRINT addr, UINT32 size, CACHE_BASE::ACCESS_TYPE accessType)
-{
-    // DTLB
-    BOOL tlb;
-    
-    if (is_tlb_4kb)
-        tlb = dtlb.AccessSingleLine(addr, CACHE_BASE::ACCESS_TYPE_LOAD);
-    else
-        tlb = dtlb_4mb.AccessSingleLine(addr, CACHE_BASE::ACCESS_TYPE_LOAD);
-
-    // DTBL miss
-    if (! tlb)
-        dtlb_miss += 1;
-
-    // first level D-cache
-    const BOOL dl1Hit = dl1.Access(addr, size, accessType);
-
-    // second level unified Cache
-    if ( ! dl1Hit) Ul2Access(addr, size, accessType, true);
-}
-
-LOCALFUN VOID MemRefSingle(ADDRINT addr, UINT32 size, CACHE_BASE::ACCESS_TYPE accessType)
-{
-    // DTLB
-    const BOOL tlb = dtlb.AccessSingleLine(addr, CACHE_BASE::ACCESS_TYPE_LOAD);
-
-    // DTBL miss
-    if (! tlb)
-        dtlb_miss += 1;
-
-    // first level D-cache
-    const BOOL dl1Hit = dl1.AccessSingleLine(addr, accessType);
-
-    // second level unified Cache
-    if ( ! dl1Hit) Ul2Access(addr, size, accessType, true);
-}
-
-// ----------------- cache compression functions --------------------
-
+//-------------------------------------------------------------------
 
 // Print a memory read record
 VOID RecordMemRead(VOID * addr)
@@ -321,36 +164,53 @@ VOID RecordMemRead(VOID * addr)
     CACHE_TAG tag;
     UINT32 index;
 
-    SplitAddress(addr, tag, index);
-    cout << tag;
-    cout << "\n";
-    cout << addr;
-    cout << "\n\n\n\n";
+    if (CCL == L1D)
+    {
+        dl1.SplitAddress((ADDRINT)addr, tag, index);
+        
+        /*
+        cout << addr;
+        cout << "\n";
+        cout << tag;
+        cout << "\n";
+        cout << index;
+        cout << "\n\n\n\n";
+        */
+    }
+
     //fprintf(trace,"%p: R %p\n", ip, addr);
-    fprintf(trace,"R %p\n", addr);
+    //fprintf(trace,"R %p\n", addr);
 
 }
 
 // Print a memory write record
 VOID RecordMemWrite(VOID * addr)
 {
+    CACHE_TAG tag;
+    UINT32 index;
+
+    if (CCL == L1D)
+    {
+        dl1.SplitAddress((ADDRINT)addr, tag, index);
+        cout << tag;
+        cout << "\n";
+        cout << addr;
+        cout << "\n\n\n\n";
+    }
+
+
+
+
     //fprintf(trace,"%p: W %p\n", ip, addr);
-    fprintf(trace,"W %p\n", addr);
+    //fprintf(trace,"W %p\n", addr);
 
 }
 
-//-------------------------------------------------------------------
+/*
 
+VOID TakeCache(INS ins)
+{ 
 
-LOCALFUN VOID Instruction(INS ins, VOID *v)
-{
-
-
-    // Instruments memory accesses using a predicated call, i.e.
-    // the instrumentation is called iff the instruction will actually be executed.
-    //
-    // On the IA-32 and Intel(R) 64 architectures conditional moves and REP 
-    // prefixed instructions appear as predicated instructions in Pin.
     UINT32 memOperands = INS_MemoryOperandCount(ins);
 
     // Iterate over each memory operand of the instruction.
@@ -365,18 +225,8 @@ LOCALFUN VOID Instruction(INS ins, VOID *v)
 				   IARG_UINT32, INS_MemoryOperandSize(ins, memOp),
 				   IARG_END);
 
-
-
-            /*
-            INS_InsertPredicatedCall(
-                ins, IPOINT_BEFORE, (AFUNPTR)RecordMemRead,
-                IARG_INST_PTR,
-                IARG_MEMORYOP_EA, memOp,
-                IARG_END);*/
         }
-        // Note that in some architectures a single memory operand can be 
-        // both read and written (for instance incl (%eax) on IA-32)
-        // In that case we instrument it once for read and once for write.
+        
         if (INS_MemoryOperandIsWritten(ins, memOp))
         {
 	        INS_InsertPredicatedCall(
@@ -384,91 +234,165 @@ LOCALFUN VOID Instruction(INS ins, VOID *v)
 				   IARG_MEMORYOP_EA, memOp,
 				   IARG_UINT32, INS_MemoryOperandSize(ins, memOp),
 				   IARG_END);
-
-            /*
-            INS_InsertPredicatedCall(
-                ins, IPOINT_BEFORE, (AFUNPTR)RecordMemWrite,
-                IARG_INST_PTR,
-                IARG_MEMORYOP_EA, memOp,
-                IARG_END);*/
         }
     }
-
-
-    // all instruction fetches access I-cache
-    INS_InsertCall(
-        ins, IPOINT_BEFORE, (AFUNPTR)InsRef,
-        IARG_INST_PTR,
-        IARG_END);
-
-    if (INS_IsMemoryRead(ins) && INS_IsStandardMemop(ins))
-    {
-        const UINT32 size = INS_MemoryReadSize(ins);
-        const AFUNPTR countFun = (size <= 4 ? (AFUNPTR) MemRefSingle : (AFUNPTR) MemRefMulti);
-
-        // only predicated-on memory instructions access D-cache
-        INS_InsertPredicatedCall(
-            ins, IPOINT_BEFORE, countFun,
-            IARG_MEMORYREAD_EA,
-            IARG_MEMORYREAD_SIZE,
-            IARG_UINT32, CACHE_BASE::ACCESS_TYPE_LOAD,
-            IARG_END);
-    }
-
-    if (INS_IsMemoryWrite(ins) && INS_IsStandardMemop(ins))
-    {
-        const UINT32 size = INS_MemoryWriteSize(ins);
-        const AFUNPTR countFun = (size <= 4 ? (AFUNPTR) MemRefSingle : (AFUNPTR) MemRefMulti);
-
-        // only predicated-on memory instructions access D-cache
-        INS_InsertPredicatedCall(
-            ins, IPOINT_BEFORE, countFun,
-            IARG_MEMORYWRITE_EA,
-            IARG_MEMORYWRITE_SIZE,
-            IARG_UINT32, CACHE_BASE::ACCESS_TYPE_STORE,
-            IARG_END);
-    }
-
-
 }
 
-// This function is called when the application exits
-VOID Fini(INT32 code, VOID *v)
-{
-    fprintf(trace, "#eof\n");
-    fclose(trace);
-   
-    /* 
-    OutFile.setf(ios::showbase);
-    
-    
-    OutFile << "Memory access - Inst " << memory_access_inst << endl;
-    OutFile << "Miss - Inst. TLB " << itlb_miss << endl;  
-    OutFile << "Page table access - Inst. " << itlb_miss*3 << endl;  
-    
-    OutFile << "Memory access - Data " << memory_access_data << endl;
-    OutFile << "Miss - Data TLB " << dtlb_miss << endl;
-    OutFile << "Page table access - Data. " << dtlb_miss*3 << endl;
+*/
 
-    
-    OutFile.close();*/
+//----------------------------------------------------------------
+
+
+
+
+
+LOCALFUN VOID Fini(int code, VOID * v)
+{
+    /*
+    std::cerr << itlb;
+    std::cerr << dtlb;
+    std::cerr << il1;
+    std::cerr << dl1;
+    std::cerr << ul2;
+    std::cerr << ul3;
+    */
+}
+
+LOCALFUN VOID Ul2Access(ADDRINT addr, UINT32 size, CACHE_BASE::ACCESS_TYPE accessType)
+{
+    // second level unified cache
+    const BOOL ul2Hit = ul2.Access(addr, size, accessType);
+
+    // third level unified cache
+    if ( ! ul2Hit) ul3.Access(addr, size, accessType);
+}
+
+LOCALFUN VOID InsRef(ADDRINT addr)
+{
+    const UINT32 size = 1; // assuming access does not cross cache lines
+    const CACHE_BASE::ACCESS_TYPE accessType = CACHE_BASE::ACCESS_TYPE_LOAD;
+
+    // ITLB
+    itlb.AccessSingleLine(addr, accessType);
+
+    // first level I-cache
+    const BOOL il1Hit = il1.AccessSingleLine(addr, accessType);
+
+    // second level unified Cache
+    if ( ! il1Hit) 
+    {
+        Ul2Access(addr, size, accessType);
+    }
+}
+
+LOCALFUN VOID MemRefMulti(ADDRINT addr, UINT32 size, CACHE_BASE::ACCESS_TYPE accessType)
+{
+    // DTLB
+    dtlb.AccessSingleLine(addr, CACHE_BASE::ACCESS_TYPE_LOAD);
+
+    // first level D-cache
+    const BOOL dl1Hit = dl1.Access(addr, size, accessType);
+
+    // second level unified Cache
+    if ( ! dl1Hit) Ul2Access(addr, size, accessType);
+}
+
+LOCALFUN VOID MemRefSingle(ADDRINT addr, UINT32 size, CACHE_BASE::ACCESS_TYPE accessType)
+{
+    // DTLB
+    dtlb.AccessSingleLine(addr, CACHE_BASE::ACCESS_TYPE_LOAD);
+
+    // first level D-cache
+    const BOOL dl1Hit = dl1.AccessSingleLine(addr, accessType);
+
+    // second level unified Cache
+    if ( ! dl1Hit) 
+    {
+        Ul2Access(addr, size, accessType);
+    }
+    else
+    {
+        //if hit take data of cache instruction
+        CCL = L1D; //set current level
+        //TakeCache(ins);
+        //RecordMemRead((void*) &addr);
+    }
+}
+
+LOCALFUN VOID Instruction(INS ins, VOID *v)
+{
+    UINT32 memOperands = INS_MemoryOperandCount(ins);
+
+    // Iterate over each memory operand of the instruction.
+    for (UINT32 memOp = 0; memOp < memOperands; memOp++)
+    {
+
+        // all instruction fetches access I-cache
+        INS_InsertCall(
+            ins, IPOINT_BEFORE, (AFUNPTR)InsRef,
+            IARG_INST_PTR,
+            IARG_END);
+
+        /*
+        INS_InsertPredicatedCall(
+            ins, IPOINT_BEFORE, (AFUNPTR)RecordMemRead,
+            IARG_MEMORYOP_EA, memOp,
+            IARG_UINT32, INS_MemoryOperandSize(ins, memOp),
+            IARG_END);
+        */
+
+        if (INS_MemoryOperandIsRead(ins, memOp))
+        {
+            const UINT32 size = INS_MemoryReadSize(ins);
+            const AFUNPTR countFun = (size <= 4 ? (AFUNPTR) MemRefSingle : (AFUNPTR) MemRefMulti);
+
+            // only predicated-on memory instructions access D-cache
+            
+            INS_InsertPredicatedCall(
+                ins, IPOINT_BEFORE, countFun,
+                IARG_MEMORYREAD_EA,
+                IARG_MEMORYREAD_SIZE,
+                IARG_UINT32, CACHE_BASE::ACCESS_TYPE_LOAD,
+                IARG_END);
+
+            INS_InsertPredicatedCall(
+                ins, IPOINT_BEFORE, (AFUNPTR)RecordMemRead,
+                IARG_MEMORYOP_EA, memOp,
+                IARG_UINT32, INS_MemoryOperandSize(ins, memOp),
+                IARG_END);
+        }
+
+        else
+        {
+            const UINT32 size = INS_MemoryWriteSize(ins);
+            const AFUNPTR countFun = (size <= 4 ? (AFUNPTR) MemRefSingle : (AFUNPTR) MemRefMulti);
+
+            // only predicated-on memory instructions access D-cache
+            INS_InsertPredicatedCall(
+                ins, IPOINT_BEFORE, countFun,
+                IARG_MEMORYWRITE_EA,
+                IARG_MEMORYWRITE_SIZE,
+                IARG_UINT32, CACHE_BASE::ACCESS_TYPE_STORE,
+                IARG_END);
+
+            INS_InsertPredicatedCall(
+                ins, IPOINT_BEFORE, (AFUNPTR)RecordMemWrite,
+                IARG_MEMORYOP_EA, memOp,
+                IARG_UINT32, INS_MemoryOperandSize(ins, memOp),
+                IARG_END);
+        }
+
+    }
 }
 
 GLOBALFUN int main(int argc, char *argv[])
 {
     PIN_Init(argc, argv);
 
-    trace = fopen("pinatrace.out", "w");
     //parser argument for TLB (-4kb or -4mb)
     for (int i = 1; i < argc; ++i) 
     {
         std::string arg = argv[i];
-        if (arg == "-4kb")
-            is_tlb_4kb = true;
-
-        if (arg == "-4mb")
-            is_tlb_4kb = false;
-
         if (arg == "-pinplay")
         {
             pinplay.Activate(argc, argv,KnobPinPlayLogger, KnobPinPlayReplayer);
@@ -476,18 +400,11 @@ GLOBALFUN int main(int argc, char *argv[])
         }
     }
 
-    OutFile.open(KnobOutputFile.Value().c_str(), std::ios_base::app);
-    
     INS_AddInstrumentFunction(Instruction, 0);
     PIN_AddFiniFunction(Fini, 0);
 
+    // Never returns
     PIN_StartProgram();
 
-    return 0;
+    return 0; // make compiler happy
 }
-
-/* Pinplay replay
- 
-pin -xyzzy -reserve_memory pinball/foo.address -t your-tool.so -replay -replay:basename pinball/foo -- $PIN_ROOT/extrans/pinplay/bin/intel64/nullapp [for intel64 pinballs]
-
-*/
