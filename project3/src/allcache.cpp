@@ -98,10 +98,10 @@ LOCALVAR DTLB::CACHE dtlb("DTLB", DTLB::cacheSize, DTLB::lineSize, DTLB::associa
 
 namespace IL1
 {
-    // 1st level instruction cache: 32 kB, 32 B lines, 32-way associative
+    // 1st level instruction cache: 32 kB, 64 B lines, 4-way associative (paper conf.)
     const UINT32 cacheSize = 32*KILO;
-    const UINT32 lineSize = 32;
-    const UINT32 associativity = 32;
+    const UINT32 lineSize = 64;
+    const UINT32 associativity = 4;
     const CACHE_ALLOC::STORE_ALLOCATION allocation = CACHE_ALLOC::STORE_NO_ALLOCATE;
 
     const UINT32 max_sets = cacheSize / (lineSize * associativity);
@@ -113,10 +113,10 @@ LOCALVAR IL1::CACHE il1("L1 Instruction Cache", IL1::cacheSize, IL1::lineSize, I
 
 namespace DL1
 {
-    // 1st level data cache: 32 kB, 32 B lines, 32-way associative
+    // 1st level data cache: 32 kB, 64 B lines, 4-way associative (paper conf.)
     const UINT32 cacheSize = 32*KILO;
-    const UINT32 lineSize = 32;
-    const UINT32 associativity = 32;
+    const UINT32 lineSize = 64;
+    const UINT32 associativity = 4;
     const CACHE_ALLOC::STORE_ALLOCATION allocation = CACHE_ALLOC::STORE_NO_ALLOCATE;
 
     const UINT32 max_sets = cacheSize / (lineSize * associativity);
@@ -128,29 +128,33 @@ LOCALVAR DL1::CACHE dl1("L1 Data Cache", DL1::cacheSize, DL1::lineSize, DL1::ass
 
 namespace UL2
 {
-    // 2nd level unified cache: 2 MB, 64 B lines, direct mapped
-    const UINT32 cacheSize = 2*MEGA;
+    // 2nd level unified cache: 32 kB, 64 B lines, 4-way (paper conf.)
+    const UINT32 cacheSize = 32*KILO;
     const UINT32 lineSize = 64;
-    const UINT32 associativity = 1;
+    const UINT32 associativity = 4;
     const CACHE_ALLOC::STORE_ALLOCATION allocation = CACHE_ALLOC::STORE_ALLOCATE;
 
     const UINT32 max_sets = cacheSize / (lineSize * associativity);
 
-    typedef CACHE_DIRECT_MAPPED(max_sets, allocation) CACHE;
+    //typedef CACHE_DIRECT_MAPPED(max_sets, allocation) CACHE;
+    const UINT32 max_associativity = associativity;
+    typedef CACHE_ROUND_ROBIN(max_sets, max_associativity, allocation) CACHE;
 }
 LOCALVAR UL2::CACHE ul2("L2 Unified Cache", UL2::cacheSize, UL2::lineSize, UL2::associativity);
 
 namespace UL3
 {
-    // 3rd level unified cache: 16 MB, 64 B lines, direct mapped
-    const UINT32 cacheSize = 16*MEGA;
+    // 3rd level unified cache: 128 kB, 64 B lines, 8-way (paper conf.)
+    const UINT32 cacheSize = 128*KILO;
     const UINT32 lineSize = 64;
-    const UINT32 associativity = 1;
+    const UINT32 associativity = 8;
     const CACHE_ALLOC::STORE_ALLOCATION allocation = CACHE_ALLOC::STORE_ALLOCATE;
 
     const UINT32 max_sets = cacheSize / (lineSize * associativity);
 
-    typedef CACHE_DIRECT_MAPPED(max_sets, allocation) CACHE;
+    //typedef CACHE_DIRECT_MAPPED(max_sets, allocation) CACHE;
+    const UINT32 max_associativity = associativity;
+    typedef CACHE_ROUND_ROBIN(max_sets, max_associativity, allocation) CACHE;
 }
 LOCALVAR UL3::CACHE ul3("L3 Unified Cache", UL3::cacheSize, UL3::lineSize, UL3::associativity);
 
@@ -312,8 +316,17 @@ LOCALFUN VOID MemRefSingle(ADDRINT addr, UINT32 size, CACHE_BASE::ACCESS_TYPE ac
     }
     else
     {
+
+        CACHE_TAG tag;
+        UINT32 index;
+
+        dl1.SplitAddress((ADDRINT)addr, tag, index);
+        cout << tag;
+        cout << "\n";
+        cout << "\n\n\n\n";
+
         //if hit take data of cache instruction
-        CCL = L1D; //set current level
+        //CCL = L1D; //set current level
         //TakeCache(ins);
         //RecordMemRead((void*) &addr);
     }
@@ -321,68 +334,42 @@ LOCALFUN VOID MemRefSingle(ADDRINT addr, UINT32 size, CACHE_BASE::ACCESS_TYPE ac
 
 LOCALFUN VOID Instruction(INS ins, VOID *v)
 {
-    UINT32 memOperands = INS_MemoryOperandCount(ins);
 
-    // Iterate over each memory operand of the instruction.
-    for (UINT32 memOp = 0; memOp < memOperands; memOp++)
+
+    // all instruction fetches access I-cache
+    INS_InsertCall(
+        ins, IPOINT_BEFORE, (AFUNPTR)InsRef,
+        IARG_INST_PTR,
+        IARG_END);
+
+    if (INS_IsMemoryRead(ins) && INS_IsStandardMemop(ins))
     {
+        const UINT32 size = INS_MemoryReadSize(ins);
+        const AFUNPTR countFun = (size <= 4 ? (AFUNPTR) MemRefSingle : (AFUNPTR) MemRefMulti);
 
-        // all instruction fetches access I-cache
-        INS_InsertCall(
-            ins, IPOINT_BEFORE, (AFUNPTR)InsRef,
-            IARG_INST_PTR,
-            IARG_END);
-
-        /*
+        // only predicated-on memory instructions access D-cache
         INS_InsertPredicatedCall(
-            ins, IPOINT_BEFORE, (AFUNPTR)RecordMemRead,
-            IARG_MEMORYOP_EA, memOp,
-            IARG_UINT32, INS_MemoryOperandSize(ins, memOp),
+            ins, IPOINT_BEFORE, countFun,
+            IARG_MEMORYREAD_EA,
+            IARG_MEMORYREAD_SIZE,
+            IARG_UINT32, CACHE_BASE::ACCESS_TYPE_LOAD,
             IARG_END);
-        */
-
-        if (INS_MemoryOperandIsRead(ins, memOp))
-        {
-            const UINT32 size = INS_MemoryReadSize(ins);
-            const AFUNPTR countFun = (size <= 4 ? (AFUNPTR) MemRefSingle : (AFUNPTR) MemRefMulti);
-
-            // only predicated-on memory instructions access D-cache
-            
-            INS_InsertPredicatedCall(
-                ins, IPOINT_BEFORE, countFun,
-                IARG_MEMORYREAD_EA,
-                IARG_MEMORYREAD_SIZE,
-                IARG_UINT32, CACHE_BASE::ACCESS_TYPE_LOAD,
-                IARG_END);
-
-            INS_InsertPredicatedCall(
-                ins, IPOINT_BEFORE, (AFUNPTR)RecordMemRead,
-                IARG_MEMORYOP_EA, memOp,
-                IARG_UINT32, INS_MemoryOperandSize(ins, memOp),
-                IARG_END);
-        }
-
-        else
-        {
-            const UINT32 size = INS_MemoryWriteSize(ins);
-            const AFUNPTR countFun = (size <= 4 ? (AFUNPTR) MemRefSingle : (AFUNPTR) MemRefMulti);
-
-            // only predicated-on memory instructions access D-cache
-            INS_InsertPredicatedCall(
-                ins, IPOINT_BEFORE, countFun,
-                IARG_MEMORYWRITE_EA,
-                IARG_MEMORYWRITE_SIZE,
-                IARG_UINT32, CACHE_BASE::ACCESS_TYPE_STORE,
-                IARG_END);
-
-            INS_InsertPredicatedCall(
-                ins, IPOINT_BEFORE, (AFUNPTR)RecordMemWrite,
-                IARG_MEMORYOP_EA, memOp,
-                IARG_UINT32, INS_MemoryOperandSize(ins, memOp),
-                IARG_END);
-        }
-
     }
+
+    if (INS_IsMemoryWrite(ins) && INS_IsStandardMemop(ins))
+    {
+        const UINT32 size = INS_MemoryWriteSize(ins);
+        const AFUNPTR countFun = (size <= 4 ? (AFUNPTR) MemRefSingle : (AFUNPTR) MemRefMulti);
+
+        // only predicated-on memory instructions access D-cache
+        INS_InsertPredicatedCall(
+            ins, IPOINT_BEFORE, countFun,
+            IARG_MEMORYWRITE_EA,
+            IARG_MEMORYWRITE_SIZE,
+            IARG_UINT32, CACHE_BASE::ACCESS_TYPE_STORE,
+            IARG_END);
+    }
+
 }
 
 GLOBALFUN int main(int argc, char *argv[])
