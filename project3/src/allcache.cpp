@@ -297,6 +297,12 @@ LOCALFUN VOID InsRef(ADDRINT addr)
     {
         Ul2Access(addr, size, accessType);
     }
+    else
+    {
+        CACHE_TAG tag;
+        UINT32 index;
+        il1.SplitAddress((ADDRINT)addr, tag, index);
+    }
 }
 
 LOCALFUN VOID MemRefMulti(ADDRINT addr, UINT32 size, CACHE_BASE::ACCESS_TYPE accessType)
