@@ -268,7 +268,17 @@ LOCALFUN VOID Ul2Access(ADDRINT addr, UINT32 size, CACHE_BASE::ACCESS_TYPE acces
     const BOOL ul2Hit = ul2.Access(addr, size, accessType);
 
     // third level unified cache
-    if ( ! ul2Hit) ul3.Access(addr, size, accessType);
+    if ( ! ul2Hit)
+    {
+        ul3.Access(addr, size, accessType);
+    }
+    else
+    {
+        CACHE_TAG tag;
+        UINT32 index;
+        ul2.SplitAddress((ADDRINT)addr, tag, index);
+    }
+
 }
 
 LOCALFUN VOID InsRef(ADDRINT addr)
@@ -298,7 +308,17 @@ LOCALFUN VOID MemRefMulti(ADDRINT addr, UINT32 size, CACHE_BASE::ACCESS_TYPE acc
     const BOOL dl1Hit = dl1.Access(addr, size, accessType);
 
     // second level unified Cache
-    if ( ! dl1Hit) Ul2Access(addr, size, accessType);
+    if ( ! dl1Hit)
+    {
+        Ul2Access(addr, size, accessType);
+    }
+    else
+    {
+        CACHE_TAG tag;
+        UINT32 index;
+        dl1.SplitAddress((ADDRINT)addr, tag, index);
+    }
+
 }
 
 LOCALFUN VOID MemRefSingle(ADDRINT addr, UINT32 size, CACHE_BASE::ACCESS_TYPE accessType)
@@ -316,21 +336,22 @@ LOCALFUN VOID MemRefSingle(ADDRINT addr, UINT32 size, CACHE_BASE::ACCESS_TYPE ac
     }
     else
     {
-
         CACHE_TAG tag;
         UINT32 index;
-
-        cout << addr;
-        cout << "\n";
         dl1.SplitAddress((ADDRINT)addr, tag, index);
-        cout << tag;
-        cout << "\n";
-        cout << "\n\n\n\n";
 
-        //if hit take data of cache instruction
-        //CCL = L1D; //set current level
-        //TakeCache(ins);
-        //RecordMemRead((void*) &addr);
+        char *dest = (char*) malloc(size);
+        memcpy(dest, (const void*) addr, size);
+
+        //cout << string(dest);
+        cout << dest;
+        cout << "\n";
+
+        //int aPtr;
+        //int len = 1; // Start with 1 string
+        //aPtr = malloc(sizeof(int) * strlen(addr)); // Do not cast malloc in C
+        //aPtr[0] = "This is a test";
+
     }
 }
 
