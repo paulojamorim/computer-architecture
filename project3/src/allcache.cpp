@@ -320,6 +320,8 @@ LOCALFUN VOID MemRefSingle(ADDRINT addr, UINT32 size, CACHE_BASE::ACCESS_TYPE ac
         CACHE_TAG tag;
         UINT32 index;
 
+        cout << addr;
+        cout << "\n";
         dl1.SplitAddress((ADDRINT)addr, tag, index);
         cout << tag;
         cout << "\n";
