@@ -8,6 +8,7 @@
 #include "CompressionBlock.h"
 #include "CompressionDict.h"
 #include "DictLBE2.h"
+#include <string.h>
 
 class CompressionLBE2 : public CompressionDict, public CompressionBlock{
    DictLBE2* dict_ = nullptr;

@@ -8,14 +8,14 @@
 using std::ifstream;
 using std::ofstream;
 #include <string>
-using std::string;
-using std::to_string;
+//using std::string;
+//using std::to_string;
 #include <vector>
 using std::vector;
 #include <set>
 using std::set;
 #include <unordered_set>
-using std::unordered_set;
+//using std::unordered_set;
 #include <unordered_map>
 using std::unordered_map;
 using std::make_pair;
@@ -36,7 +36,12 @@ using std::endl;
 
 // #include "MPIFormat.h"
 // #include "MemoryFormat.h"
-
+std::string to_string(int i)
+{
+    std::stringstream ss;
+    ss << i;
+    return ss.str();
+}
 
 using PTID = pair<unsigned, unsigned>;
 

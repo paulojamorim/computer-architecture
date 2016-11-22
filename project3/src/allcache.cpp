@@ -46,6 +46,8 @@ END_LEGAL */
 #include "cache.H"
 #include "pin_cache.H"
 
+#include "CompressionLBE2.h"
+
 //typedef UINT32 CACHE_STATS; // type of cache hit/miss counters
 
 PINPLAY_ENGINE pinplay;
