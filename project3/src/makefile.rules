@@ -26,4 +26,8 @@ TOOL_LPATHS += $(PINPLAY_HOME)/lib/intel64/libpinplay.a $(PINPLAY_HOME)/lib-ext/
 
 TEST_TOOL_ROOTS := allcache
 
-TOOLNAMES=allcache 
+MY_SRCS := CompressionLBE2.cpp DictLBE2.cpp
+MY_OBJS := $(addprefix obj-intel64/, $(MY_SRCS:.cpp=.o))
+
+$(OBJDIR)allcache$(PINTOOL_SUFFIX): $(OBJDIR)allcache$(OBJ_SUFFIX) $(MY_OBJS)
+	$(LINKER) $(TOOL_LDFLAGS) $(LINK_EXE)$@ $^ $(TOOL_LPATHS) $(TOOL_LIBS)

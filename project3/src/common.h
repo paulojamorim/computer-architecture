@@ -8,8 +8,18 @@
 using std::ifstream;
 using std::ofstream;
 #include <string>
-//using std::string;
+#include <sstream>
+
+template <typename T>
+std::string to_string(T value)
+{
+	std::ostringstream os ;
+	os << value ;
+	return os.str() ;
+}
+
 //using std::to_string;
+using std::string;
 #include <vector>
 using std::vector;
 #include <set>
@@ -36,12 +46,7 @@ using std::endl;
 
 // #include "MPIFormat.h"
 // #include "MemoryFormat.h"
-std::string to_string(int i)
-{
-    std::stringstream ss;
-    ss << i;
-    return ss.str();
-}
+
 
 using PTID = pair<unsigned, unsigned>;
 

@@ -56,16 +56,16 @@ public:
    }
 
    void emplace(const uint32_t& word){
-      dict32_[copyid_].emplace(word);
+      dict32_[copyid_].insert(word);
    }
    void emplace(const uint64_t& word){
-      dict64_[copyid_].emplace(word);
+      dict64_[copyid_].insert(word);
    }
    void emplace(const uint128_t& word){
-      dict128_[copyid_].emplace(word);
+      dict128_[copyid_].insert(word);
    }
    void emplace(const uint256_t& word){
-      dict256_[copyid_].emplace(word);
+      dict256_[copyid_].insert(word);
    }
 
    virtual bool isFull() const{

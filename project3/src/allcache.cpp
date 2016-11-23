@@ -41,14 +41,15 @@ END_LEGAL */
 #include <iostream>
 #include <fstream>
 
+
 #include "pin.H"
 #include "pinplay.H"
-#include "cache.H"
+//#include "cache.H"
+typedef UINT32 CACHE_STATS; // type of cache hit/miss counters
 #include "pin_cache.H"
 
 #include "CompressionLBE2.h"
-
-//typedef UINT32 CACHE_STATS; // type of cache hit/miss counters
+#include "DictLBE2.h"
 
 PINPLAY_ENGINE pinplay;
 KNOB<BOOL> KnobPinPlayLogger(KNOB_MODE_WRITEONCE, "pintool", "log", "0", "Activate the pinplay logger");
@@ -67,6 +68,8 @@ const int L3U = 3;
 
 int CCL; //current cache level
 
+CompressionLBE2* comp = new CompressionLBE2();
+DictLBE2* dict = new DictLBE2();
 
 namespace ITLB
 {
@@ -198,10 +201,10 @@ VOID RecordMemWrite(VOID * addr)
     if (CCL == L1D)
     {
         dl1.SplitAddress((ADDRINT)addr, tag, index);
-        cout << tag;
+        /*cout << tag;
         cout << "\n";
         cout << addr;
-        cout << "\n\n\n\n";
+        cout << "\n\n\n\n";*/
     }
 
 
@@ -279,6 +282,42 @@ LOCALFUN VOID Ul2Access(ADDRINT addr, UINT32 size, CACHE_BASE::ACCESS_TYPE acces
         CACHE_TAG tag;
         UINT32 index;
         ul2.SplitAddress((ADDRINT)addr, tag, index);
+
+        /*
+        if (size == 4)
+        {
+            //char *dest = (char*) malloc(size);
+            
+            
+            uint32_t *dest = (uint32_t*) malloc(sizeof(uint32_t));
+            
+            memcpy((void*) dest, (const void*) addr, size);
+
+
+            //cout << size;
+            //cout << dest;
+            //cout << "\n";
+
+
+            dict->emplace(*dest);
+        }*/
+
+        char *dest = (char*) malloc(size);
+            
+            
+        //uint32_t *dest = (uint32_t*) malloc(sizeof(uint32_t));
+            
+        memcpy(dest, (const void*) addr, size);
+
+
+
+        string add;
+        add = to_string(addr);
+        
+        cout << size;
+        cout << " "; 
+        cout << comp->incrementalCompress((uint8_t*) dest, size, 0);
+        cout << "\n";
     }
 
 }
@@ -347,13 +386,6 @@ LOCALFUN VOID MemRefSingle(ADDRINT addr, UINT32 size, CACHE_BASE::ACCESS_TYPE ac
         CACHE_TAG tag;
         UINT32 index;
         dl1.SplitAddress((ADDRINT)addr, tag, index);
-
-        char *dest = (char*) malloc(size);
-        memcpy(dest, (const void*) addr, size);
-
-        //cout << string(dest);
-        cout << dest;
-        cout << "\n";
 
         //int aPtr;
         //int len = 1; // Start with 1 string
