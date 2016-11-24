@@ -41,20 +41,19 @@ END_LEGAL */
 #include <iostream>
 #include <fstream>
 
-
 #include "pin.H"
 #include "pinplay.H"
 //#include "cache.H"
 typedef UINT32 CACHE_STATS; // type of cache hit/miss counters
 
-UINT32 COUNT_ORIGINAL_SIZE = 0;
-UINT32 COUNT_LBE_INTRA_LINE = 0;
+UINT64 COUNT_ORIGINAL_SIZE = 0;
+UINT64 COUNT_LBE_INTRA_LINE = 0;
+UINT64 COUNT_LBE_INTER_LINE = 0;
 
+UINT64 COUNT_LINE_SIZE = 0;
 
 #include "pin_cache.H"
-
 #include "CompressionLBE2.h"
-#include "DictLBE2.h"
 
 PINPLAY_ENGINE pinplay;
 KNOB<BOOL> KnobPinPlayLogger(KNOB_MODE_WRITEONCE, "pintool", "log", "0", "Activate the pinplay logger");
@@ -66,7 +65,9 @@ ofstream OutFile;
 FILE * trace;
 static bool is_pin_play = false; //run tranditional mode (with out pinplay)
 
-CompressionLBE2* comp = new CompressionLBE2();
+CompressionLBE2* comp_intra = new CompressionLBE2();
+CompressionLBE2* comp_inter = new CompressionLBE2();
+char *dest_line = (char*) malloc(512); //512 byte to join lines
 
 namespace ITLB
 {
@@ -168,11 +169,68 @@ LOCALFUN VOID Fini(int code, VOID * v)
 {
     OutFile.setf(ios::showbase);
 
-    OutFile << "Original size: " << " " << COUNT_ORIGINAL_SIZE << "\n" << endl;
+    UINT64 ORIGINAL_SIZE_AS_BYTES;
+    ORIGINAL_SIZE_AS_BYTES = COUNT_ORIGINAL_SIZE * 8;
+
+    OutFile << "Original size: " << " " << ORIGINAL_SIZE_AS_BYTES << endl;
     OutFile << "Intra size: " << " " << COUNT_LBE_INTRA_LINE << endl;
+    OutFile << "Inter size: " << " " << COUNT_LBE_INTER_LINE << endl;
 
     OutFile.close();
 }
+
+
+LOCALFUN VOID Compress(ADDRINT addr, UINT32 size)
+{
+    CACHE_TAG tag;
+    UINT32 index;
+    ul2.SplitAddress((ADDRINT)addr, tag, index);
+
+    char *dest = (char*) malloc(size);
+    memcpy(dest, (const void*) addr, size);
+
+    //original size (in bytes)
+    COUNT_ORIGINAL_SIZE += size;
+    
+    //intra-line compression (in bits)
+    COUNT_LBE_INTRA_LINE += comp_intra->incrementalCompress((uint8_t*) dest, size, 0);
+
+    //inter-line compression
+    if (COUNT_LINE_SIZE + size < 512)
+    {
+        UINT64 id = 0;
+        for(UINT64 i=COUNT_LINE_SIZE; i<COUNT_LINE_SIZE + size; i++)
+        {
+            dest_line[i] = dest[id];
+            id += 1;
+        }
+
+        COUNT_LINE_SIZE += size; 
+    }
+    else
+    {
+        //after merge lines in 512 bytes space, make compression
+        COUNT_LBE_INTER_LINE += comp_inter->incrementalCompress((uint8_t*) dest_line, 512, 0);
+        
+        //clean
+        for (int i=0; i < 512; i++)
+        {
+           dest_line[0] = 0; 
+        }
+        
+        //write next line in file
+        UINT64 id = 0;
+        for(UINT64 i=0; i<COUNT_LINE_SIZE + size; i++)
+        {
+            dest_line[i] = dest[id];
+            id += 1;
+        }
+        COUNT_LINE_SIZE = size;
+    }
+
+    free(dest);
+}
+
 
 LOCALFUN VOID Ul2Access(ADDRINT addr, UINT32 size, CACHE_BASE::ACCESS_TYPE accessType)
 {
@@ -186,21 +244,7 @@ LOCALFUN VOID Ul2Access(ADDRINT addr, UINT32 size, CACHE_BASE::ACCESS_TYPE acces
     }
     else
     {
-        CACHE_TAG tag;
-        UINT32 index;
-        ul2.SplitAddress((ADDRINT)addr, tag, index);
-
-        char *dest = (char*) malloc(size);
-            
-        memcpy(dest, (const void*) addr, size);
-
-
-        string add;
-        add = to_string(addr);
-        
-        COUNT_ORIGINAL_SIZE += size;
-        COUNT_LBE_INTRA_LINE += comp->incrementalCompress((uint8_t*) dest, size, 0);
-
+        Compress(addr, size);
     }
 
 }
@@ -223,9 +267,7 @@ LOCALFUN VOID InsRef(ADDRINT addr)
     }
     else
     {
-        CACHE_TAG tag;
-        UINT32 index;
-        il1.SplitAddress((ADDRINT)addr, tag, index);
+        Compress(addr, size);
     }
 }
 
@@ -244,9 +286,7 @@ LOCALFUN VOID MemRefMulti(ADDRINT addr, UINT32 size, CACHE_BASE::ACCESS_TYPE acc
     }
     else
     {
-        CACHE_TAG tag;
-        UINT32 index;
-        dl1.SplitAddress((ADDRINT)addr, tag, index);
+        Compress(addr, size);
     }
 
 }
@@ -266,10 +306,7 @@ LOCALFUN VOID MemRefSingle(ADDRINT addr, UINT32 size, CACHE_BASE::ACCESS_TYPE ac
     }
     else
     {
-        CACHE_TAG tag;
-        UINT32 index;
-        dl1.SplitAddress((ADDRINT)addr, tag, index);
-
+        Compress(addr, size);
     }
 }
 
