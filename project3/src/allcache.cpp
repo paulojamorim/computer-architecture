@@ -46,6 +46,11 @@ END_LEGAL */
 #include "pinplay.H"
 //#include "cache.H"
 typedef UINT32 CACHE_STATS; // type of cache hit/miss counters
+
+UINT32 COUNT_ORIGINAL_SIZE = 0;
+UINT32 COUNT_LBE_INTRA_LINE = 0;
+
+
 #include "pin_cache.H"
 
 #include "CompressionLBE2.h"
@@ -54,22 +59,14 @@ typedef UINT32 CACHE_STATS; // type of cache hit/miss counters
 PINPLAY_ENGINE pinplay;
 KNOB<BOOL> KnobPinPlayLogger(KNOB_MODE_WRITEONCE, "pintool", "log", "0", "Activate the pinplay logger");
 KNOB<BOOL> KnobPinPlayReplayer(KNOB_MODE_WRITEONCE, "pintool", "replay", "0", "Activate the pinplay replayer");
-KNOB<string> KnobOutputFile(KNOB_MODE_WRITEONCE, "pintool", "o", "inscount.out", "specify output file name");
+KNOB<string> KnobOutputFile(KNOB_MODE_WRITEONCE, "pintool", "o", "size.out", "specify output file name");
 
 ofstream OutFile;
 
 FILE * trace;
 static bool is_pin_play = false; //run tranditional mode (with out pinplay)
 
-const int L1I = 0;
-const int L1D = 1;
-const int L2U = 2;
-const int L3U = 3;
-
-int CCL; //current cache level
-
 CompressionLBE2* comp = new CompressionLBE2();
-DictLBE2* dict = new DictLBE2();
 
 namespace ITLB
 {
@@ -164,107 +161,17 @@ namespace UL3
 LOCALVAR UL3::CACHE ul3("L3 Unified Cache", UL3::cacheSize, UL3::lineSize, UL3::associativity);
 
 
-//-------------------------------------------------------------------
-
-// Print a memory read record
-VOID RecordMemRead(VOID * addr)
-{
-
-    CACHE_TAG tag;
-    UINT32 index;
-
-    if (CCL == L1D)
-    {
-        dl1.SplitAddress((ADDRINT)addr, tag, index);
-        
-        /*
-        cout << addr;
-        cout << "\n";
-        cout << tag;
-        cout << "\n";
-        cout << index;
-        cout << "\n\n\n\n";
-        */
-    }
-
-    //fprintf(trace,"%p: R %p\n", ip, addr);
-    //fprintf(trace,"R %p\n", addr);
-
-}
-
-// Print a memory write record
-VOID RecordMemWrite(VOID * addr)
-{
-    CACHE_TAG tag;
-    UINT32 index;
-
-    if (CCL == L1D)
-    {
-        dl1.SplitAddress((ADDRINT)addr, tag, index);
-        /*cout << tag;
-        cout << "\n";
-        cout << addr;
-        cout << "\n\n\n\n";*/
-    }
-
-
-
-
-    //fprintf(trace,"%p: W %p\n", ip, addr);
-    //fprintf(trace,"W %p\n", addr);
-
-}
-
-/*
-
-VOID TakeCache(INS ins)
-{ 
-
-    UINT32 memOperands = INS_MemoryOperandCount(ins);
-
-    // Iterate over each memory operand of the instruction.
-    for (UINT32 memOp = 0; memOp < memOperands; memOp++)
-    {
-        if (INS_MemoryOperandIsRead(ins, memOp))
-        {
-
-	        INS_InsertPredicatedCall(
-				   ins, IPOINT_BEFORE, (AFUNPTR)RecordMemRead,
-				   IARG_MEMORYOP_EA, memOp,
-				   IARG_UINT32, INS_MemoryOperandSize(ins, memOp),
-				   IARG_END);
-
-        }
-        
-        if (INS_MemoryOperandIsWritten(ins, memOp))
-        {
-	        INS_InsertPredicatedCall(
-				   ins, IPOINT_BEFORE, (AFUNPTR)RecordMemWrite,
-				   IARG_MEMORYOP_EA, memOp,
-				   IARG_UINT32, INS_MemoryOperandSize(ins, memOp),
-				   IARG_END);
-        }
-    }
-}
-
-*/
-
-//----------------------------------------------------------------
-
-
-
+//---------------------------------------------------------------------------------------------------
 
 
 LOCALFUN VOID Fini(int code, VOID * v)
 {
-    /*
-    std::cerr << itlb;
-    std::cerr << dtlb;
-    std::cerr << il1;
-    std::cerr << dl1;
-    std::cerr << ul2;
-    std::cerr << ul3;
-    */
+    OutFile.setf(ios::showbase);
+
+    OutFile << "Original size: " << " " << COUNT_ORIGINAL_SIZE << "\n" << endl;
+    OutFile << "Intra size: " << " " << COUNT_LBE_INTRA_LINE << endl;
+
+    OutFile.close();
 }
 
 LOCALFUN VOID Ul2Access(ADDRINT addr, UINT32 size, CACHE_BASE::ACCESS_TYPE accessType)
@@ -283,41 +190,17 @@ LOCALFUN VOID Ul2Access(ADDRINT addr, UINT32 size, CACHE_BASE::ACCESS_TYPE acces
         UINT32 index;
         ul2.SplitAddress((ADDRINT)addr, tag, index);
 
-        /*
-        if (size == 4)
-        {
-            //char *dest = (char*) malloc(size);
-            
-            
-            uint32_t *dest = (uint32_t*) malloc(sizeof(uint32_t));
-            
-            memcpy((void*) dest, (const void*) addr, size);
-
-
-            //cout << size;
-            //cout << dest;
-            //cout << "\n";
-
-
-            dict->emplace(*dest);
-        }*/
-
         char *dest = (char*) malloc(size);
             
-            
-        //uint32_t *dest = (uint32_t*) malloc(sizeof(uint32_t));
-            
         memcpy(dest, (const void*) addr, size);
-
 
 
         string add;
         add = to_string(addr);
         
-        cout << size;
-        cout << " "; 
-        cout << comp->incrementalCompress((uint8_t*) dest, size, 0);
-        cout << "\n";
+        COUNT_ORIGINAL_SIZE += size;
+        COUNT_LBE_INTRA_LINE += comp->incrementalCompress((uint8_t*) dest, size, 0);
+
     }
 
 }
@@ -387,11 +270,6 @@ LOCALFUN VOID MemRefSingle(ADDRINT addr, UINT32 size, CACHE_BASE::ACCESS_TYPE ac
         UINT32 index;
         dl1.SplitAddress((ADDRINT)addr, tag, index);
 
-        //int aPtr;
-        //int len = 1; // Start with 1 string
-        //aPtr = malloc(sizeof(int) * strlen(addr)); // Do not cast malloc in C
-        //aPtr[0] = "This is a test";
-
     }
 }
 
@@ -439,6 +317,7 @@ GLOBALFUN int main(int argc, char *argv[])
 {
     PIN_Init(argc, argv);
 
+
     //parser argument for TLB (-4kb or -4mb)
     for (int i = 1; i < argc; ++i) 
     {
@@ -450,6 +329,8 @@ GLOBALFUN int main(int argc, char *argv[])
         }
     }
 
+    OutFile.open(KnobOutputFile.Value().c_str(), std::ios_base::app);
+    
     INS_AddInstrumentFunction(Instruction, 0);
     PIN_AddFiniFunction(Fini, 0);
 
