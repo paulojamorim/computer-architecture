@@ -67,7 +67,8 @@ static bool is_pin_play = false; //run tranditional mode (with out pinplay)
 
 CompressionLBE2* comp_intra = new CompressionLBE2();
 CompressionLBE2* comp_inter = new CompressionLBE2();
-char *dest_line = (char*) malloc(512); //512 byte to join lines
+
+unsigned LZ4;
 
 namespace ITLB
 {
@@ -175,6 +176,8 @@ LOCALFUN VOID Fini(int code, VOID * v)
     OutFile << "Original:" << " " << ORIGINAL_SIZE_AS_BYTES << endl;
     OutFile << "Intra:" << " " << COUNT_LBE_INTRA_LINE << endl;
     OutFile << "Inter:" << " " << COUNT_LBE_INTER_LINE << endl;
+    OutFile << "LZ4:" << " " << LZ4 << endl;
+
     OutFile.close();
 }
 
@@ -191,42 +194,16 @@ LOCALFUN VOID Compress(ADDRINT addr, UINT32 size)
     //original size (in bytes)
     COUNT_ORIGINAL_SIZE += size;
     
-    //intra-line compression (in bits)
+    //intra-line compression (in bits) - project 3
     COUNT_LBE_INTRA_LINE += comp_intra->incrementalCompress((uint8_t*) dest, size, 0);
+    comp_intra->resetDict();
 
-    //inter-line compression
-    if (COUNT_LINE_SIZE + size < 512)
-    {
-        UINT64 id = 0;
-        for(UINT64 i=COUNT_LINE_SIZE; i<COUNT_LINE_SIZE + size; i++)
-        {
-            dest_line[i] = dest[id];
-            id += 1;
-        }
-
-        COUNT_LINE_SIZE += size; 
-    }
-    else
-    {
-        //after merge lines in 512 bytes space, make compression
-        COUNT_LBE_INTER_LINE += comp_inter->incrementalCompress((uint8_t*) dest_line, 512, 0);
-        
-        //clean
-        for (int i=0; i < 512; i++)
-        {
-           dest_line[0] = 0; 
-        }
-        
-        //write next line in file
-        UINT64 id = 0;
-        for(UINT64 i=0; i<COUNT_LINE_SIZE + size; i++)
-        {
-            dest_line[i] = dest[id];
-            id += 1;
-        }
-        COUNT_LINE_SIZE = size;
-    }
-
+    //inter-line compression - project 3
+    COUNT_LBE_INTER_LINE += comp_inter->incrementalCompress((uint8_t*) dest, size, 0);
+       
+    //lz4  - project 4
+    
+    
     free(dest);
 }
 
@@ -240,10 +217,6 @@ LOCALFUN VOID Ul2Access(ADDRINT addr, UINT32 size, CACHE_BASE::ACCESS_TYPE acces
     if ( ! ul2Hit)
     {
         ul3.Access(addr, size, accessType);
-    }
-    else
-    {
-        Compress(addr, size);
     }
 
 }
@@ -262,11 +235,8 @@ LOCALFUN VOID InsRef(ADDRINT addr)
     // second level unified Cache
     if ( ! il1Hit) 
     {
-        Ul2Access(addr, size, accessType);
-    }
-    else
-    {
         Compress(addr, size);
+        Ul2Access(addr, size, accessType);
     }
 }
 
@@ -281,11 +251,9 @@ LOCALFUN VOID MemRefMulti(ADDRINT addr, UINT32 size, CACHE_BASE::ACCESS_TYPE acc
     // second level unified Cache
     if ( ! dl1Hit)
     {
-        Ul2Access(addr, size, accessType);
-    }
-    else
-    {
+
         Compress(addr, size);
+        Ul2Access(addr, size, accessType);
     }
 
 }
@@ -301,11 +269,8 @@ LOCALFUN VOID MemRefSingle(ADDRINT addr, UINT32 size, CACHE_BASE::ACCESS_TYPE ac
     // second level unified Cache
     if ( ! dl1Hit) 
     {
-        Ul2Access(addr, size, accessType);
-    }
-    else
-    {
         Compress(addr, size);
+        Ul2Access(addr, size, accessType);
     }
 }
 
@@ -357,7 +322,8 @@ GLOBALFUN int main(int argc, char *argv[])
   const size_t src_size = strlen(src) + 1;
   const size_t max_dst_size = LZ4_compressBound(src_size);
 
-    cout << max_dst_size; 
+    cout << "SSSSSS";
+    LZ4 = max_dst_size; 
 
 
     PIN_Init(argc, argv);
