@@ -54,6 +54,7 @@ UINT64 COUNT_LINE_SIZE = 0;
 
 #include "pin_cache.H"
 #include "CompressionLBE2.h"
+#include "common.h"
 
 PINPLAY_ENGINE pinplay;
 KNOB<BOOL> KnobPinPlayLogger(KNOB_MODE_WRITEONCE, "pintool", "log", "0", "Activate the pinplay logger");
@@ -200,9 +201,25 @@ LOCALFUN VOID Compress(ADDRINT addr, UINT32 size)
 
     //inter-line compression - project 3
     COUNT_LBE_INTER_LINE += comp_inter->incrementalCompress((uint8_t*) dest, size, 0);
-       
+      
+
     //lz4  - project 4
-    
+    // Set and derive sizes.  Since we're using strings, use strlen() + 1 for \0.
+    //const size_t src_size = strlen(dest);
+    //const size_t max_dst_size = LZ4_compressBound(src_size);
+    //int bytes_returned = 0;
+  
+    // Now build allocations for the data we'll be playing with.
+    //char *dst               = (char*) calloc(1, max_dst_size);
+    //char *known_good_dst    = (char*) calloc(1, max_dst_size + 1);
+    //char *known_good_hc_dst = (char*) calloc(1, max_dst_size);
+    //if (dst == NULL || known_good_dst == NULL || known_good_hc_dst == NULL)
+    //    run_screaming("Couldn't allocate memory for the destination buffers.  Sad :(", 1);
+
+    // Create known-good buffers to verify our tests with other functions will produce the same results.
+    //bytes_returned = LZ4_compress_default(dest, known_good_dst, src_size, max_dst_size);
+    //cout << strlen(to_string(bytes_returned).c_str()) << endl;
+    //cout << bytes_returned;
     
     free(dest);
 }
@@ -316,16 +333,6 @@ LOCALFUN VOID Instruction(INS ins, VOID *v)
 
 GLOBALFUN int main(int argc, char *argv[])
 {
-
-    const char *src = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed luctus purus et risus vulputate, et mollis orci ullamcorper. Nulla facilisi. Fusce in ligula sed purus varius aliquet interdum vitae justo. Proin quis diam velit. Nulla varius iaculis auctor. Cras volutpat, justo eu dictum pulvinar, elit sem porttitor metus, et imperdiet metus sapien et ante. Nullam nisi nulla, ornare eu tristique eu, dignissim vitae diam. Nulla sagittis porta libero, a accumsan felis sagittis scelerisque.  Integer laoreet eleifend congue. Etiam rhoncus leo vel dolor fermentum, quis luctus nisl iaculis. Praesent a erat sapien. Aliquam semper mi in lorem ultrices ultricies. Lorem ipsum dolor sit amet, consectetur adipiscing elit. In feugiat risus sed enim ultrices, at sodales nulla tristique. Maecenas eget pellentesque justo, sed pellentesque lectus. Fusce sagittis sit amet elit vel varius. Donec sed ligula nec ligula vulputate rutrum sed ut lectus. Etiam congue pharetra leo vitae cursus. Morbi enim ante, porttitor ut varius vel, tincidunt quis justo. Nunc iaculis, risus id ultrices semper, metus est efficitur ligula, vel posuere risus nunc eget purus. Ut lorem turpis, condimentum at sem sed, porta aliquam turpis. In ut sapien a nulla dictum tincidunt quis sit amet lorem. Fusce at est egestas, luctus neque eu, consectetur tortor. Phasellus eleifend ultricies nulla ac lobortis.  Morbi maximus quam cursus vehicula iaculis. Maecenas cursus vel justo ut rutrum. Curabitur magna orci, dignissim eget dapibus vitae, finibus id lacus. Praesent rhoncus mattis augue vitae bibendum. Praesent porta mauris non ultrices fermentum. Quisque vulputate ipsum in sodales pulvinar. Aliquam nec mollis felis. Donec vitae augue pulvinar, congue nisl sed, pretium purus. Fusce lobortis mi ac neque scelerisque semper. Pellentesque vel est vitae magna aliquet aliquet. Nam non dolor. Nulla facilisi. Class aptent taciti sociosqu ad litora torquent per conubia nostra, per inceptos himenaeos. Morbi ac lacinia felis metus.";
-  // Set and derive sizes.  Since we're using strings, use strlen() + 1 for \0.
-  const size_t src_size = strlen(src) + 1;
-  const size_t max_dst_size = LZ4_compressBound(src_size);
-
-    cout << "SSSSSS";
-    LZ4 = max_dst_size; 
-
-
     PIN_Init(argc, argv);
 
 
