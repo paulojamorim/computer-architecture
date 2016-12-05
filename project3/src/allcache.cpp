@@ -174,20 +174,16 @@ LOCALFUN VOID Fini(int code, VOID * v)
     UINT64 ORIGINAL_SIZE_AS_BYTES;
     ORIGINAL_SIZE_AS_BYTES = COUNT_ORIGINAL_SIZE * 8;
 
-    OutFile << "Original:" << " " << ORIGINAL_SIZE_AS_BYTES << endl;
-    OutFile << "Intra:" << " " << COUNT_LBE_INTRA_LINE << endl;
-    OutFile << "Inter:" << " " << COUNT_LBE_INTER_LINE << endl;
-    OutFile << "LZ4:" << " " << LZ4 << endl;
-
+    OutFile << ORIGINAL_SIZE_AS_BYTES << "," << COUNT_LBE_INTER_LINE  << "," << COUNT_LBE_INTRA_LINE << "," << LZ4 << endl;
     OutFile.close();
 }
 
 
 LOCALFUN VOID Compress(ADDRINT addr, UINT32 size)
 {
-    CACHE_TAG tag;
-    UINT32 index;
-    ul2.SplitAddress((ADDRINT)addr, tag, index);
+    //CACHE_TAG tag;
+    //UINT32 index;
+    //ul2.SplitAddress((ADDRINT)addr, tag, index);
 
     char *dest = (char*) malloc(size);
     memcpy(dest, (const void*) addr, size);
@@ -195,13 +191,13 @@ LOCALFUN VOID Compress(ADDRINT addr, UINT32 size)
     //original size (in bytes)
     COUNT_ORIGINAL_SIZE += size;
     
-    //intra-line compression (in bits) - project 3
-    COUNT_LBE_INTRA_LINE += comp_intra->incrementalCompress((uint8_t*) dest, size, 0);
-    comp_intra->resetDict();
-
     //inter-line compression - project 3
     COUNT_LBE_INTER_LINE += comp_inter->incrementalCompress((uint8_t*) dest, size, 0);
     
+    //intra-line compression (in bits) - project 3
+    COUNT_LBE_INTRA_LINE += comp_intra->incrementalCompress((uint8_t*) dest, size, 0);
+    comp_intra->reset();
+
     //lz4 compression - project 4  
     const int dstBufferSize = LZ4_compressBound(strlen(dest) + 1);
     LZ4 += dstBufferSize;
@@ -218,7 +214,15 @@ LOCALFUN VOID Ul2Access(ADDRINT addr, UINT32 size, CACHE_BASE::ACCESS_TYPE acces
     // third level unified cache
     if ( ! ul2Hit)
     {
-        ul3.Access(addr, size, accessType);
+        Compress(addr, size);
+        
+        const BOOL ul3Hit = ul3.Access(addr, size, accessType);
+
+        // Verify L3 miss
+        if (! ul3Hit)
+        {
+            Compress(addr, size);
+        }
     }
 
 }
