@@ -181,10 +181,6 @@ LOCALFUN VOID Fini(int code, VOID * v)
 
 LOCALFUN VOID Compress(ADDRINT addr, UINT32 size)
 {
-    //CACHE_TAG tag;
-    //UINT32 index;
-    //ul2.SplitAddress((ADDRINT)addr, tag, index);
-
     char *dest = (char*) malloc(size);
     memcpy(dest, (const void*) addr, size);
 
