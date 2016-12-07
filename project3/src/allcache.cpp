@@ -174,7 +174,11 @@ LOCALFUN VOID Fini(int code, VOID * v)
     UINT64 ORIGINAL_SIZE_AS_BYTES;
     ORIGINAL_SIZE_AS_BYTES = COUNT_ORIGINAL_SIZE * 8;
 
-    OutFile << ORIGINAL_SIZE_AS_BYTES << "," << COUNT_LBE_INTER_LINE  << "," << COUNT_LBE_INTRA_LINE << "," << LZ4 << endl;
+    OutFile << ORIGINAL_SIZE_AS_BYTES << ",";
+    OutFile << COUNT_LBE_INTRA_LINE << ",";
+    OutFile << COUNT_LBE_INTER_LINE << ",";
+    OutFile << LZ4 << endl;
+
     OutFile.close();
 }
 
