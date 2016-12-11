@@ -174,10 +174,10 @@ LOCALFUN VOID Fini(int code, VOID * v)
     UINT64 ORIGINAL_SIZE_AS_BYTES;
     ORIGINAL_SIZE_AS_BYTES = COUNT_ORIGINAL_SIZE * 8;
 
-    OutFile << "Original:" << " " << ORIGINAL_SIZE_AS_BYTES << endl;
-    OutFile << "Intra:" << " " << COUNT_LBE_INTRA_LINE << endl;
-    OutFile << "Inter:" << " " << COUNT_LBE_INTER_LINE << endl;
-    OutFile << "LZ4:" << " " << LZ4 << endl;
+    OutFile << ORIGINAL_SIZE_AS_BYTES << ",";
+    OutFile << COUNT_LBE_INTRA_LINE << ",";
+    OutFile << COUNT_LBE_INTER_LINE << ",";
+    OutFile << LZ4 << endl;
 
     OutFile.close();
 }
@@ -185,42 +185,23 @@ LOCALFUN VOID Fini(int code, VOID * v)
 
 LOCALFUN VOID Compress(ADDRINT addr, UINT32 size)
 {
-    CACHE_TAG tag;
-    UINT32 index;
-    ul2.SplitAddress((ADDRINT)addr, tag, index);
-
     char *dest = (char*) malloc(size);
     memcpy(dest, (const void*) addr, size);
 
     //original size (in bytes)
     COUNT_ORIGINAL_SIZE += size;
     
-    //intra-line compression (in bits) - project 3
-    COUNT_LBE_INTRA_LINE += comp_intra->incrementalCompress((uint8_t*) dest, size, 0);
-    comp_intra->resetDict();
-
     //inter-line compression - project 3
     COUNT_LBE_INTER_LINE += comp_inter->incrementalCompress((uint8_t*) dest, size, 0);
-      
-
-    //lz4  - project 4
-    // Set and derive sizes.  Since we're using strings, use strlen() + 1 for \0.
-    //const size_t src_size = strlen(dest);
-    //const size_t max_dst_size = LZ4_compressBound(src_size);
-    //int bytes_returned = 0;
-  
-    // Now build allocations for the data we'll be playing with.
-    //char *dst               = (char*) calloc(1, max_dst_size);
-    //char *known_good_dst    = (char*) calloc(1, max_dst_size + 1);
-    //char *known_good_hc_dst = (char*) calloc(1, max_dst_size);
-    //if (dst == NULL || known_good_dst == NULL || known_good_hc_dst == NULL)
-    //    run_screaming("Couldn't allocate memory for the destination buffers.  Sad :(", 1);
-
-    // Create known-good buffers to verify our tests with other functions will produce the same results.
-    //bytes_returned = LZ4_compress_default(dest, known_good_dst, src_size, max_dst_size);
-    //cout << strlen(to_string(bytes_returned).c_str()) << endl;
-    //cout << bytes_returned;
     
+    //intra-line compression (in bits) - project 3
+    COUNT_LBE_INTRA_LINE += comp_intra->incrementalCompress((uint8_t*) dest, size, 0);
+    comp_intra->reset();
+
+    //lz4 compression - project 4  
+    const int dstBufferSize = LZ4_compressBound(strlen(dest) + 1);
+    LZ4 += dstBufferSize;
+
     free(dest);
 }
 
@@ -233,7 +214,15 @@ LOCALFUN VOID Ul2Access(ADDRINT addr, UINT32 size, CACHE_BASE::ACCESS_TYPE acces
     // third level unified cache
     if ( ! ul2Hit)
     {
-        ul3.Access(addr, size, accessType);
+        Compress(addr, size);
+        
+        const BOOL ul3Hit = ul3.Access(addr, size, accessType);
+
+        // Verify L3 miss
+        if (! ul3Hit)
+        {
+            Compress(addr, size);
+        }
     }
 
 }
