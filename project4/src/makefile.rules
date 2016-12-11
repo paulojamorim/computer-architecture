@@ -1,0 +1,41 @@
+##############################################################
+#
+# This file includes all the test targets as well as all the
+# non-default build rules and test recipes.
+#
+##############################################################
+
+
+##############################################################
+#
+# Test targets
+#
+##############################################################
+
+###### Place all generic definitions here ######
+
+## --- to pinplay support -------------------------------------------------------------
+
+PINPLAY_HOME=$(PIN_ROOT)/extras/pinplay/
+PINPLAY_INCLUDE_HOME=$(PINPLAY_HOME)/include
+PINPLAY_LIB_HOME=$(PINPLAY_HOME)/lib/$(TARGET)
+
+TOOL_CXXFLAGS += -g -O3 -std=c++11 -D_FILE_OFFSET_BITS=64 \
+								 -I$(PIN_ROOT)/source/tools/InstLib       \
+								 -I$(PINPLAY_INCLUDE_HOME)                \
+								 -I$(PIN_ROOT)/source/tools/PinPoints     \
+								 -Ilz4/lib
+
+TOOL_LPATHS += $(PINPLAY_HOME)/lib/intel64/libpinplay.a  \
+							 $(PINPLAY_HOME)/lib-ext/intel64/libbz2.a  \
+							 $(PINPLAY_HOME)/lib-ext/intel64/libzlib.a \
+							 $(CONTROLLERLIB)                          \
+							 lz4/lib/liblz4.a
+
+TEST_TOOL_ROOTS := allcache
+
+MY_SRCS := CompressionLBE2.cpp DictLBE2.cpp
+MY_OBJS := $(addprefix obj-intel64/, $(MY_SRCS:.cpp=.o))
+
+$(OBJDIR)allcache$(PINTOOL_SUFFIX): $(OBJDIR)allcache$(OBJ_SUFFIX) $(MY_OBJS)
+	$(LINKER) $(TOOL_LDFLAGS) $(LINK_EXE)$@ $^ $(TOOL_LPATHS) $(TOOL_LIBS)
